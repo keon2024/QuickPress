@@ -1,0 +1,46 @@
+# 并发引擎
+concurrency:
+  loop: 1       # 循环次数 1 一次  -1 无限循环
+  unit: m                # s 秒 、m 分钟 、h 小时
+  stages:
+    - duration: 1m            # 第一阶段：1分钟内从0增加到100并发
+      target: 100
+    - duration: 2m            # 第二阶段：保持100并发2分钟
+      target: 100
+    - duration: 5m            # 第三阶段：1分钟内从100增加到200并发
+      target: 200
+    - duration: 10m            # 第四阶段：保持200并发1分钟
+      target: 200
+    - duration: 20m            # 第四阶段：保持200并发1分钟
+      target: 0
+
+# 全局配置
+global:
+    gd_host: https://gd.ygcx.com
+
+# 文件读取
+reader:
+    type: csv
+    file: /Users/xxx/xxx.csv
+# 请求链
+requests:
+  - name: 询价
+    url: "https://example.com/api"
+    method: GET
+    headers:
+      Authorization: "Bearer xyz"
+    params:
+      query: "test"
+    assertions:
+      - status_code: 200
+      - response_time: <500
+  - name: 询价
+    url: "https://example.com/api"
+    method: GET
+    headers:
+        Authorization: {token}
+    params:
+    query: "test"
+    assertions:
+    - status_code: 200
+    - response_time: <500
