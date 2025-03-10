@@ -1,18 +1,18 @@
 # 并发引擎
 concurrency:
   loop: 1       # 循环次数 1 一次  -1 无限循环
-  unit: m                # s 秒 、m 分钟 、h 小时
+  unit: s                # s 秒 、m 分钟 、h 小时
   stages:
-    - duration: 1m            # 第一阶段：1分钟内从0增加到100并发
-      target: 100
-    - duration: 2m            # 第二阶段：保持100并发2分钟
-      target: 100
-    - duration: 5m            # 第三阶段：1分钟内从100增加到200并发
-      target: 200
-    - duration: 10m            # 第四阶段：保持200并发1分钟
-      target: 200
-    - duration: 20m            # 第四阶段：保持200并发1分钟
-      target: 0
+    - duration: 10            # 第一阶段：1分钟内都按100并发执行任务
+      target: 1
+    - duration: 20            # 第二阶段：1-2分钟保持200并发
+      target: 2
+    - duration: 30            # 第三阶段：2-5分钟保持300并发
+      target: 3
+    - duration: 40            # 第四阶段：5-10分钟保持200并发
+      target: 2
+    - duration: 50            # 第四阶段：保持200并发1分钟
+      target: 1
 
 # 全局配置
 global:
@@ -38,7 +38,7 @@ requests:
     url: "https://example.com/api"
     method: GET
     headers:
-        Authorization: {token}
+        Authorization: "{token}"
     params:
     query: "test"
     assertions:
