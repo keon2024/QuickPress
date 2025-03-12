@@ -18,7 +18,7 @@ const (
 	hour   = "h"
 )
 
-func GroutinePool(conc config.Concurrency) {
+func GroutinePool(conc config.Concurrency, f func()) {
 	loop := conc.Loop
 	unit := conc.Unit
 	stages := conc.Stages
@@ -57,8 +57,8 @@ func GroutinePool(conc config.Concurrency) {
 							wg.Done()
 							return
 						default:
-							time.Sleep(time.Second)
-							fmt.Println("Hello World! 协程号：" + fmt.Sprintf("%d", v))
+							// 执行方法
+							f()
 						}
 
 					}
