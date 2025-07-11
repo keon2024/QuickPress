@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 type csvReader struct {
@@ -87,7 +86,7 @@ func readCSV(filePath string, out chan<- map[string]string, sigStopRead <-chan b
 
 			// 通过 channel 发送
 			out <- row
-			time.Sleep(1 * time.Second)
+			//time.Sleep(1 * time.Second)
 		}
 
 	}

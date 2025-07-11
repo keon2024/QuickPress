@@ -1,6 +1,6 @@
 # 并发引擎
 concurrency:
-  loop: 1       # 循环次数 1 一次  -1 无限循环
+  loop: -1       # 循环次数 1 一次  -1 无限循环
   unit: s                # s 秒 、m 分钟 、h 小时
   stages:
     - duration: 10            # 第一阶段：1分钟内都按100并发执行任务
@@ -21,7 +21,7 @@ global:
 # 文件读取
 reader:
     type: csv
-    file: /Users/xxx/xxx.csv
+    file: /Users/edy/Desktop/data.csv
 # 请求链
 requests:
   - name: 询价

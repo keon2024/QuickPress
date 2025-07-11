@@ -28,8 +28,8 @@ func main() {
 	fmt.Println("Host: ", conf.Global["gd_host"])
 	// 读取文件，写入channel
 	stopSignal := make(chan bool)
-	r1 := reader.NewReader(reader.CSV, reader.ReaderConfig{
-		FilePath: "/Users/edy/Desktop/data.csv", StopSignal: stopSignal})
+	r1 := reader.NewReader(conf.Reader.Type, reader.ReaderConfig{
+		FilePath: conf.Reader.File, StopSignal: stopSignal})
 
 	go func() {
 		time.Sleep(30 * time.Second)
