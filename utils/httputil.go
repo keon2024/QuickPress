@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/valyala/fasthttp"
 	"mime/multipart"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/ast"
+	"github.com/valyala/fasthttp"
 )
 
 // 全局配置
@@ -16,6 +19,26 @@ var client = &fasthttp.Client{
 	MaxConnsPerHost: 1000,
 	ReadTimeout:     3 * time.Second,
 	WriteTimeout:    3 * time.Second,
+}
+
+type HttpResp struct {
+	StatusCode int
+	Error      error
+	JsonObj    *ast.Node
+}
+
+func (r *HttpResp) GetNode(path string) (*ast.Node, error) {
+	if r.JsonObj == nil {
+		return nil, fmt.Errorf("no JSON object available")
+	}
+	if !strings.Contains(path, ".") {
+		return r.JsonObj.Get(path), nil
+	}
+	// 按.分割路径
+	parts := strings.Split(path, ".")
+	value := r.JsonObj.GetByPath(parts)
+
+	return value, nil
 }
 
 type BodyType string
@@ -37,7 +60,7 @@ type RequestOptions struct {
 	Timeout  time.Duration
 }
 
-func Do(opts RequestOptions) (int, []byte, error) {
+func Do(opts RequestOptions) HttpResp {
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseRequest(req)
@@ -46,6 +69,16 @@ func Do(opts RequestOptions) (int, []byte, error) {
 	method := strings.ToUpper(opts.Method)
 	req.Header.SetMethod(method)
 
+	// 如果 url 上有占位符{id},则根据 query 中参数填充占位符
+	if strings.Contains(opts.URL, "{") && len(opts.Query) > 0 {
+		for k, v := range opts.Query {
+			placeholder := fmt.Sprintf("{%s}", k)
+			if strings.Contains(opts.URL, placeholder) {
+				opts.URL = strings.ReplaceAll(opts.URL, placeholder, fmt.Sprint(v))
+				delete(opts.Query, k) // 删除已替换的参数
+			}
+		}
+	}
 	// --- 构造 Query ---
 	if len(opts.Query) > 0 {
 		q := make([]string, 0)
@@ -65,12 +98,14 @@ func Do(opts RequestOptions) (int, []byte, error) {
 		req.Header.Set(k, v)
 	}
 
+	var response HttpResp
 	// --- 构造 Body ---
 	switch opts.BodyType {
 	case BodyJSON:
 		data, err := json.Marshal(opts.Body)
 		if err != nil {
-			return 0, nil, err
+			response.Error = err
+			return response
 		}
 		req.SetBody(data)
 		req.Header.SetContentType(string(BodyJSON))
@@ -99,10 +134,22 @@ func Do(opts RequestOptions) (int, []byte, error) {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
 	}
+
 	err := client.DoTimeout(req, resp, timeout)
 	if err != nil {
-		return 0, nil, err
+		response.Error = err
+		return response
+	}
+	node, err := sonic.GetFromString(string(resp.Body()))
+	if err != nil {
+		response.Error = err
+		return response
 	}
 
-	return resp.StatusCode(), append([]byte(nil), resp.Body()...), nil
+	return HttpResp{
+		StatusCode: resp.StatusCode(),
+		Error:      nil,
+		JsonObj:    &node,
+	}
+
 }
