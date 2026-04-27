@@ -1,46 +1,60 @@
-# 并发引擎
+app:
+    listen: :8080
 concurrency:
-  loop: -1       # 循环次数 1 一次  -1 无限循环
-  unit: s                # s 秒 、m 分钟 、h 小时
-  stages:
-    - duration: 10            # 第一阶段：1分钟内都按100并发执行任务
-      target: 1
-    - duration: 20            # 第二阶段：1-2分钟保持200并发
-      target: 2
-    - duration: 30            # 第三阶段：2-5分钟保持300并发
-      target: 3
-    - duration: 40            # 第四阶段：5-10分钟保持200并发
-      target: 2
-    - duration: 50            # 第四阶段：保持200并发1分钟
-      target: 1
-
-# 全局配置
-global:
-    gd_host: https://gd.ygcx.com
-
-# 文件读取
+    loop: 1
+    unit: s
+    stages:
+        - label: 预热
+          duration: 10
+          target: 2
+        - label: 稳定
+          duration: 30
+          target: 6
+        - label: 冲刺
+          duration: 59
+          target: 12
+        - label: 冲刺
+          duration: 60
+          target: 12
+        - duration: 71
+          target: 20
+        - duration: 79
+          target: 12
+        - duration: 87
+          target: 8
+        - duration: 91
+          target: 6
+        - duration: 94
+          target: 4
+        - duration: 96
+          target: 20
+        - duration: 102
+          target: 20
+        - duration: 111
+          target: 1
+        - duration: 112
+          target: 0
 reader:
     type: csv
-    file: /Users/edy/Desktop/data.csv
-# 请求链
+    file: config/data/meituan_yace_data.csv
+global:
+    host: https://postman-echo.com
+    scene: quickpress
 requests:
-  - name: 询价
-    url: "https://example.com/api"
-    method: GET
-    headers:
-      Authorization: "Bearer xyz"
-    params:
-      query: "test"
-    assertions:
-      - status_code: 200
-      - response_time: <500
-  - name: 询价
-    url: "https://example.com/api"
-    method: GET
-    headers:
-        Authorization: "{token}"
-    params:
-    query: "test"
-    assertions:
-    - status_code: 200
-    - response_time: <500
+    - name: 询价
+      method: GET
+      url: ${host}/get
+      timeout_ms: 3000
+      headers:
+        X-Scene: ${scene}
+      query:
+        endPointLat: ${e_lat}
+        endPointLng: ${e_lng}
+        keyword: hello
+        scene: ${scene}
+        startPointLat: ${s_lat}
+        startPointLng: ${s_lng}
+        startPointName: yace_sname
+      expected_status: 200
+      contains:
+        - hello

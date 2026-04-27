@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickPress 控制台</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e1116;
+      --surface: #151a22;
+      --surface-soft: #1b222c;
+      --panel: #161c25;
+      --panel-strong: #111720;
+      --border: rgba(178, 190, 205, 0.18);
+      --text: #edf2f7;
+      --muted: #9aa6b5;
+      --primary: #7dd3fc;
+      --primary-strong: #38bdf8;
+      --accent: #a7f3d0;
+      --danger: #f87171;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+      padding: 16px 0 10px;
+      flex-wrap: wrap;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 820px;
+      line-height: 1.65;
+    }
+
+    .status-pill {
+      border-radius: 8px;
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      color: var(--text);
+      font-size: 14px;
+      min-width: 140px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar, .grid, .runtime-grid, .chart-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .grid {
+      grid-template-columns: minmax(640px, 1.25fr) minmax(420px, 0.75fr);
+      align-items: start;
+    }
+
+    .runtime-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    details.panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    details.panel > summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid transparent;
+    }
+
+    details.panel[open] > summary {
+      border-bottom-color: var(--border);
+    }
+
+    details.panel > summary::-webkit-details-marker { display: none; }
+
+    details.panel > summary::after {
+      content: "⌄";
+      color: var(--muted);
+      font-size: 18px;
+      transform: rotate(-90deg);
+      transition: transform 0.15s ease;
+    }
+
+    details.panel[open] > summary::after { transform: rotate(0deg); }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: #dbeafe;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .subtle strong { color: #dbeafe; }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, select, textarea, button {
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 11px 12px;
+      font: inherit;
+    }
+
+    input[disabled], select[disabled], textarea[disabled] {
+      opacity: 0.72;
+      cursor: not-allowed;
+      background: rgba(15, 23, 42, 0.52);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .json-area { min-height: 138px; }
+
+    button {
+      cursor: pointer;
+      background: var(--primary-strong);
+      color: #071016;
+      font-weight: 700;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      white-space: nowrap;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.secondary {
+      background: var(--surface-soft);
+      color: var(--text);
+    }
+    button.danger {
+      background: rgba(248, 113, 113, 0.92);
+      color: #1f1313;
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-style: dashed;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chart-shell {
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: var(--panel-strong);
+      padding: 14px 14px 12px;
+      margin-top: 14px;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-line {
+      width: 24px;
+      height: 0;
+      border-top: 3px solid var(--primary);
+      border-radius: 999px;
+    }
+
+    .legend-line.locked { border-top-color: rgba(148, 163, 184, 0.9); }
+    .legend-line.current { border-top-color: var(--warn); }
+
+    .chart-frame {
+      width: 100%;
+      min-height: 260px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0c1118;
+      border: 1px solid rgba(148, 163, 184, 0.08);
+    }
+
+    .runtime-chart .chart-frame { min-height: 230px; }
+
+    .chart-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .timeline-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .stage-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .stage-table th, .stage-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      text-align: left;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .stage-table th {
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .stage-table tr.stage-locked td {
+      background: rgba(100, 116, 139, 0.08);
+    }
+
+    .stage-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 64px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .stage-badge.locked {
+      background: rgba(148, 163, 184, 0.12);
+      border-color: rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+    }
+
+    .stage-badge.editable {
+      background: rgba(96, 165, 250, 0.12);
+      border-color: rgba(96, 165, 250, 0.25);
+      color: #dbeafe;
+    }
+
+    .kv-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .kv-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.9fr) minmax(260px, 1.4fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: var(--panel-strong);
+    }
+
+    .kv-row button {
+      min-width: 84px;
+    }
+
+    .request-card {
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--panel-strong);
+      margin-top: 14px;
+    }
+
+    .request-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .metric-card {
+      background: var(--panel-strong);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .metric-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric-card .value {
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    .metric-card.success .value { color: var(--success); }
+    .metric-card.failure .value { color: var(--danger); }
+
+    .message {
+      margin-top: 14px;
+      border-radius: 8px;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .message.show { display: block; }
+    .message.success {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #d1fae5;
+    }
+    .message.error {
+      background: rgba(248, 113, 113, 0.12);
+      border-color: rgba(248, 113, 113, 0.35);
+      color: #fee2e2;
+    }
+
+    .code-block {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(2, 6, 23, 0.7);
+      color: #dbeafe;
+      font-size: 12px;
+      line-height: 1.6;
+      min-height: 52px;
+    }
+
+    .results-panel {
+      grid-column: 1 / -1;
+    }
+
+    .results-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .result-item {
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.58);
+      overflow: hidden;
+    }
+
+    .result-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .result-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .result-main {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .result-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 64px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .result-badge.success {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.28);
+      color: #d1fae5;
+    }
+
+    .result-badge.error {
+      background: rgba(248, 113, 113, 0.14);
+      border-color: rgba(248, 113, 113, 0.28);
+      color: #fee2e2;
+    }
+
+    .result-body {
+      padding: 0 16px 16px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .result-section {
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 8px;
+      background: var(--panel-strong);
+      padding: 12px;
+    }
+
+    .result-section h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #dbeafe;
+    }
+
+    .result-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .result-stack .subtle {
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border-radius: 8px;
+      border: 1px dashed rgba(148, 163, 184, 0.2);
+      color: var(--muted);
+      margin-top: 14px;
+      text-align: center;
+    }
+
+    @media (max-width: 1180px) {
+      .grid { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .toolbar .toolbar-spacer { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      .toolbar, .field-grid, .field-grid-3, .runtime-grid, .metrics, .chart-grid, .result-body {
+        grid-template-columns: 1fr;
+      }
+      .kv-row {
+        grid-template-columns: 1fr;
+      }
+      .page { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div>
+        <h1>QuickPress 本地压测控制台</h1>
+        <p>围绕测试计划、请求链、运行曲线和结果查看组织压测流程；常用操作集中在顶部，配置区域可按需展开。</p>
+      </div>
+      <div id="runBadge" class="status-pill">未启动</div>
+    </section>
+
+    <section class="toolbar">
+      <div class="subtle toolbar-spacer">当前配置由控制台默认文件管理，也可以从本地导入后保存覆盖。</div>
+      <button id="importBtn" class="secondary">导入配置</button>
+      <button id="saveBtn" class="secondary">保存配置</button>
+      <button id="startBtn">启动压测</button>
+      <button id="stopBtn" class="danger">停止</button>
+    </section>
+    <input id="importFileInput" type="file" accept=".yml,.yaml,.json" hidden />
+    <input id="readerFileInput" type="file" accept=".csv,text/csv" hidden />
+
+    <div id="message" class="message"></div>
+
+    <section class="grid">
+      <div>
+        <details class="panel" open>
+          <summary><h2>测试计划配置</h2></summary>
+          <div class="panel-body">
+
+          <input id="listenInput" hidden />
+          <input id="readerType" hidden value="csv" />
+          <input id="readerFile" hidden />
+
+          <div class="field-grid-3">
+            <label>
+              循环次数
+              <input id="loopInput" type="number" placeholder="1 或 -1" />
+            </label>
+            <label>
+              时间单位
+              <select id="unitInput">
+                <option value="s">秒</option>
+                <option value="m">分钟</option>
+                <option value="h">小时</option>
+              </select>
+            </label>
+            <label>
+              数据文件
+              <div class="row">
+                <button id="selectReaderFileBtn" type="button" class="secondary">选择数据文件</button>
+                <span id="readerFileName" class="subtle">未选择</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="field-grid-3" style="margin-top: 12px;">
+            <label>
+              运行中当前并发
+              <div class="row">
+                <input id="currentTargetInput" type="number" placeholder="例如 20" />
+                <button id="applyTargetBtn" class="secondary">立即应用</button>
+              </div>
+            </label>
+          </div>
+
+          <div style="margin-top: 16px;">
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <div>
+              <h3>并发阶段</h3>
+              <div class="subtle">横坐标是时间，纵坐标是并发数。运行后当前时间之前自动锁定，未来计划仍可调整。</div>
+            </div>
+            <div class="row">
+              <button id="syncStagesBtn" class="secondary">同步到运行计划</button>
+              <button id="addStageBtn" class="ghost">新增未来阶段</button>
+            </div>
+          </div>
+
+          <div class="chart-shell">
+            <div class="chart-head">
+              <div class="chart-legend">
+                <span class="legend-item"><span class="legend-line locked"></span>已锁定历史</span>
+                <span class="legend-item"><span class="legend-line"></span>未来阶段计划</span>
+                <span class="legend-item"><span class="legend-line current"></span>当前时间</span>
+              </div>
+              <div id="chartMeta" class="subtle">尚未生成阶段图</div>
+            </div>
+            <div class="chart-frame">
+              <svg id="stageChart" class="chart-svg" viewBox="0 0 860 320" preserveAspectRatio="none"></svg>
+            </div>
+            <div id="timelineNote" class="timeline-note">当前未运行时，所有阶段都可以自由调整；启动后会自动锁定当前时间之前的阶段。</div>
+          </div>
+
+          <table class="stage-table">
+            <thead>
+              <tr>
+                <th>标签</th>
+                <th>累计时长</th>
+                <th>目标并发</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="stagesBody"></tbody>
+          </table>
+          </div>
+          </div>
+        </details>
+
+        <details class="panel" open style="margin-top: 16px;">
+          <summary><h2>全局变量</h2></summary>
+          <div class="panel-body">
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <div>
+              <div class="subtle">一条变量对应一条内容，更适合逐个维护。支持在 URL / Header / Query / Body 中用 `${name}`、`{{name}}` 或 `{name}` 引用。</div>
+            </div>
+            <button id="addGlobalBtn" class="ghost">新增变量</button>
+          </div>
+          <div id="globalList" class="kv-list"></div>
+          </div>
+        </details>
+
+        <details class="panel" open style="margin-top: 16px;">
+          <summary><h2>请求链</h2></summary>
+          <div class="panel-body">
+          <div class="row" style="justify-content: space-between; align-items: center;">
+            <div>
+              <div class="subtle">每个虚拟用户会按顺序执行整条请求链，支持响应断言和变量提取，实现类似 JMeter 的链路编排。</div>
+            </div>
+            <button id="addRequestBtn" class="ghost">新增请求</button>
+          </div>
+          <div id="requestsContainer"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="runtime-grid">
+        <details class="panel" open>
+          <summary><h2>运行状态</h2></summary>
+          <div class="panel-body">
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <span class="subtle">压测进度与实时概览</span>
+            <button id="refreshStatusBtn" class="secondary">刷新状态</button>
+          </div>
+          <div class="metrics">
+            <div class="metric-card"><div class="label">当前并发</div><div id="metricTarget" class="value">0</div></div>
+            <div class="metric-card"><div class="label">活跃 Worker</div><div id="metricWorkers" class="value">0</div></div>
+            <div class="metric-card"><div class="label">累计请求</div><div id="metricTotal" class="value">0</div></div>
+            <div class="metric-card"><div class="label">平均 RPS</div><div id="metricRps" class="value">0</div></div>
+            <div class="metric-card success"><div class="label">成功</div><div id="metricSuccess" class="value">0</div></div>
+            <div class="metric-card failure"><div class="label">失败</div><div id="metricFailure" class="value">0</div></div>
+          </div>
+          <div class="chart-grid" style="margin-top: 14px;">
+            <div class="chart-shell runtime-chart">
+              <div class="chart-head">
+                <h3>Response Times Over Time</h3>
+                <div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>平均耗时</span></div>
+              </div>
+              <div class="chart-frame"><svg id="latencyChart" class="chart-svg" viewBox="0 0 520 260" preserveAspectRatio="none"></svg></div>
+            </div>
+            <div class="chart-shell runtime-chart">
+              <div class="chart-head">
+                <h3>Transactions Per Second</h3>
+                <div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>成功 QPS</span><span class="legend-item"><span class="legend-line current"></span>失败 QPS</span></div>
+              </div>
+              <div class="chart-frame"><svg id="tpsChart" class="chart-svg" viewBox="0 0 520 260" preserveAspectRatio="none"></svg></div>
+            </div>
+          </div>
+          </div>
+        </details>
+
+        <details class="panel" style="margin-top: 16px;">
+          <summary><h2>详细信息</h2></summary>
+          <div class="panel-body">
+          <div class="field-grid">
+            <label>
+              当前循环
+              <input id="statusLoop" disabled />
+            </label>
+            <label>
+              当前阶段
+              <input id="statusStage" disabled />
+            </label>
+            <label>
+              已运行时长
+              <input id="statusElapsed" disabled />
+            </label>
+            <label>
+              数据集大小
+              <input id="statusDataset" disabled />
+            </label>
+          </div>
+          <div style="margin-top: 14px;">
+            <div class="subtle">成功 / 失败</div>
+            <div id="successSummary" class="code-block"></div>
+          </div>
+          <div style="margin-top: 14px;">
+            <div class="subtle">状态码分布</div>
+            <div id="statusCodes" class="code-block"></div>
+          </div>
+          <div style="margin-top: 14px;">
+            <div class="subtle">最近错误</div>
+            <div id="lastError" class="code-block"></div>
+          </div>
+          <div style="margin-top: 14px;">
+            <div class="subtle">当前运行阶段表</div>
+            <div id="stageSummary" class="code-block"></div>
+          </div>
+          </div>
+        </details>
+
+        <details class="panel results-panel" open style="margin-top: 16px;">
+          <summary><h2>查看结果</h2></summary>
+          <div class="panel-body">
+          <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <div class="subtle">类似 JMeter 的查看结果树，展示最近请求的完整请求信息、响应结果、断言失败和错误信息。</div>
+            </div>
+            <div class="row">
+              <span id="resultsCounter" class="subtle">暂无结果</span>
+              <button id="refreshResultsBtn" class="secondary">刷新结果</button>
+            </div>
+          </div>
+          <div id="resultsList" class="results-list"></div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      path: localStorage.getItem('quickpress-config-path') || 'config/prod.yml',
+      config: null,
+      status: null,
+      results: [],
+      lastResultsRefreshAt: 0,
+      refreshTimer: null,
+    };
+
+    const els = {
+      runBadge: document.getElementById('runBadge'),
+      message: document.getElementById('message'),
+      saveBtn: document.getElementById('saveBtn'),
+      importBtn: document.getElementById('importBtn'),
+      importFileInput: document.getElementById('importFileInput'),
+      readerFileInput: document.getElementById('readerFileInput'),
+      selectReaderFileBtn: document.getElementById('selectReaderFileBtn'),
+      readerFileName: document.getElementById('readerFileName'),
+      startBtn: document.getElementById('startBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      listenInput: document.getElementById('listenInput'),
+      readerType: document.getElementById('readerType'),
+      readerFile: document.getElementById('readerFile'),
+      loopInput: document.getElementById('loopInput'),
+      unitInput: document.getElementById('unitInput'),
+      currentTargetInput: document.getElementById('currentTargetInput'),
+      applyTargetBtn: document.getElementById('applyTargetBtn'),
+      syncStagesBtn: document.getElementById('syncStagesBtn'),
+      addStageBtn: document.getElementById('addStageBtn'),
+      stagesBody: document.getElementById('stagesBody'),
+      stageChart: document.getElementById('stageChart'),
+      chartMeta: document.getElementById('chartMeta'),
+      timelineNote: document.getElementById('timelineNote'),
+      globalList: document.getElementById('globalList'),
+      addGlobalBtn: document.getElementById('addGlobalBtn'),
+      addRequestBtn: document.getElementById('addRequestBtn'),
+      requestsContainer: document.getElementById('requestsContainer'),
+      refreshStatusBtn: document.getElementById('refreshStatusBtn'),
+      refreshResultsBtn: document.getElementById('refreshResultsBtn'),
+      resultsCounter: document.getElementById('resultsCounter'),
+      resultsList: document.getElementById('resultsList'),
+      metricTarget: document.getElementById('metricTarget'),
+      metricWorkers: document.getElementById('metricWorkers'),
+      metricTotal: document.getElementById('metricTotal'),
+      metricRps: document.getElementById('metricRps'),
+      metricSuccess: document.getElementById('metricSuccess'),
+      metricFailure: document.getElementById('metricFailure'),
+      latencyChart: document.getElementById('latencyChart'),
+      tpsChart: document.getElementById('tpsChart'),
+      statusLoop: document.getElementById('statusLoop'),
+      statusStage: document.getElementById('statusStage'),
+      statusElapsed: document.getElementById('statusElapsed'),
+      statusDataset: document.getElementById('statusDataset'),
+      successSummary: document.getElementById('successSummary'),
+      statusCodes: document.getElementById('statusCodes'),
+      lastError: document.getElementById('lastError'),
+      stageSummary: document.getElementById('stageSummary'),
+    };
+
+    function init() {
+      bindEvents();
+      loadConfig();
+      refreshStatus();
+      state.refreshTimer = window.setInterval(refreshStatus, 2000);
+    }
+
+    function bindEvents() {
+      els.saveBtn.addEventListener('click', saveConfig);
+      els.importBtn.addEventListener('click', () => els.importFileInput.click());
+      els.importFileInput.addEventListener('change', importConfigFromFile);
+      els.selectReaderFileBtn.addEventListener('click', () => els.readerFileInput.click());
+      els.readerFileInput.addEventListener('change', importReaderFile);
+      els.startBtn.addEventListener('click', startRun);
+      els.stopBtn.addEventListener('click', stopRun);
+      els.refreshStatusBtn.addEventListener('click', refreshStatus);
+      els.refreshResultsBtn.addEventListener('click', () => refreshResults(true));
+      els.unitInput.addEventListener('change', renderStageChart);
+      els.loopInput.addEventListener('input', renderStageChart);
+      els.addStageBtn.addEventListener('click', () => mutateConfig(cfg => {
+        const stages = getWorkingStages();
+        const next = nextDuration(stages, getRuntimeCutoff(getRuntimeStages()));
+        cfg.concurrency.stages = stages;
+        cfg.concurrency.stages.push({ label: '', duration: next, target: inferNextTarget(stages) });
+      }));
+      els.syncStagesBtn.addEventListener('click', syncStages);
+      els.applyTargetBtn.addEventListener('click', applyTarget);
+      els.addGlobalBtn.addEventListener('click', () => mutateConfig(cfg => {
+        const globalVars = normalizeStringMap(cfg.global);
+        globalVars[nextGlobalKey(globalVars)] = '';
+        cfg.global = globalVars;
+      }));
+      els.addRequestBtn.addEventListener('click', () => mutateConfig(cfg => {
+        cfg.requests.push(defaultRequest());
+      }));
+
+      els.globalList.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-remove-global]');
+        if (!btn) return;
+        const row = btn.closest('.kv-row');
+        if (row) row.remove();
+        ensureGlobalListState();
+      });
+
+      els.stagesBody.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-stage-index]');
+        if (!btn) return;
+        const index = Number(btn.dataset.stageIndex);
+        if (btn.disabled) return;
+        mutateConfig(cfg => {
+          const stages = getWorkingStages();
+          stages.splice(index, 1);
+          cfg.concurrency.stages = stages.length ? stages : [{ label: '默认阶段', duration: 30, target: 1 }];
+        });
+      });
+
+      els.stagesBody.addEventListener('input', () => {
+        renderStageChart();
+        updateStageEditingState();
+      });
+
+      els.requestsContainer.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-request-index]');
+        if (!btn) return;
+        const index = Number(btn.dataset.requestIndex);
+        mutateConfig(cfg => {
+          cfg.requests.splice(index, 1);
+        });
+      });
+    }
+
+    async function api(url, options = {}) {
+      const response = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || '请求失败');
+      }
+      return data;
+    }
+
+    async function loadConfig() {
+      try {
+        localStorage.setItem('quickpress-config-path', state.path);
+        const query = state.path ? `?path=${encodeURIComponent(state.path)}` : '';
+        const data = await api(`/api/config${query}`);
+        state.path = data.path || state.path;
+        state.config = normalizeConfig(data.config || {});
+        renderConfig();
+        showMessage('配置已加载。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function loadDefaultConfig() {
+      try {
+        const data = await api('/api/config/default');
+        state.config = normalizeConfig(data.config || {});
+        if (!state.path && data.path) {
+          state.path = data.path;
+        }
+        renderConfig();
+        showMessage('已载入默认模板。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function saveConfig() {
+      try {
+        syncFormToState();
+        localStorage.setItem('quickpress-config-path', state.path);
+        const query = state.path ? `?path=${encodeURIComponent(state.path)}` : '';
+        await api(`/api/config${query}`, {
+          method: 'POST',
+          body: JSON.stringify({ config: state.config }),
+        });
+        showMessage(`配置已保存到 ${state.path || '默认路径'}`, 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function importReaderFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const content = await file.text();
+        const data = await api('/api/reader/upload', {
+          method: 'POST',
+          body: JSON.stringify({ content, file_name: file.name }),
+        });
+        els.readerFile.value = data.path || '';
+        els.readerFileName.textContent = data.file_name || file.name;
+        mutateConfig(cfg => {
+          cfg.reader.type = 'csv';
+          cfg.reader.file = data.path || '';
+        });
+        showMessage(`数据文件 ${data.file_name || file.name} 已导入。`, 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    async function importConfigFromFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const content = await file.text();
+        const data = await api('/api/config/import', {
+          method: 'POST',
+          body: JSON.stringify({ content, file_name: file.name }),
+        });
+        state.config = normalizeConfig(data.config || {});
+        renderConfig();
+        showMessage(`已从 ${file.name} 导入完整配置，页面内容已同步展开。`, 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    async function exportConfigFile() {
+      try {
+        syncFormToState();
+        const data = await api('/api/config/export', {
+          method: 'POST',
+          body: JSON.stringify({
+            path: state.path,
+            config: state.config,
+          }),
+        });
+        downloadTextFile(data.file_name || 'quickpress-config.yml', data.content || '');
+        showMessage(`当前配置已导出为 ${data.file_name || 'quickpress-config.yml'}。`, 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function startRun() {
+      try {
+        syncFormToState();
+        const data = await api('/api/run/start', {
+          method: 'POST',
+          body: JSON.stringify({ path: state.path, config: state.config }),
+        });
+        state.status = data.status;
+        syncConfigConcurrencyFromStatus(data.status);
+        renderConfig();
+        renderStatus();
+        await refreshResults(false);
+        showMessage('压测已启动。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function stopRun() {
+      try {
+        const data = await api('/api/run/stop', { method: 'POST', body: '{}' });
+        state.status = data.status;
+        syncConfigConcurrencyFromStatus(data.status);
+        renderConfig();
+        renderStatus();
+        showMessage('压测已停止。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function refreshStatus() {
+      try {
+        const status = await api('/api/run/status');
+        state.status = status;
+        syncLockedStagesFromStatus();
+        renderStatus();
+        renderStageChart();
+        if (status.running || Date.now() - state.lastResultsRefreshAt > 5000) {
+          await refreshResults(false);
+        }
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function refreshResults(showToast = false) {
+      try {
+        const payload = await api('/api/run/results?limit=120');
+        state.results = Array.isArray(payload.results) ? payload.results : [];
+        state.lastResultsRefreshAt = Date.now();
+        renderResults();
+        renderRuntimeCharts();
+        if (showToast) {
+          showMessage('请求结果已刷新。', 'success');
+        }
+      } catch (error) {
+        if (showToast) {
+          showMessage(error.message, 'error');
+        }
+      }
+    }
+
+    async function applyTarget() {
+      try {
+        const target = Number(els.currentTargetInput.value);
+        if (Number.isNaN(target)) {
+          throw new Error('请输入有效的并发数');
+        }
+        const data = await api('/api/run/adjust', {
+          method: 'POST',
+          body: JSON.stringify({ target }),
+        });
+        state.status = data.status;
+        syncConfigConcurrencyFromStatus(data.status);
+        renderConfig();
+        renderStatus();
+        showMessage('当前阶段并发已更新。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    async function syncStages() {
+      try {
+        syncFormToState();
+        const data = await api('/api/run/adjust', {
+          method: 'POST',
+          body: JSON.stringify({ stages: state.config.concurrency.stages }),
+        });
+        state.status = data.status;
+        syncConfigConcurrencyFromStatus(data.status);
+        renderConfig();
+        renderStatus();
+        showMessage('未来阶段计划已同步到运行中的任务。', 'success');
+      } catch (error) {
+        showMessage(error.message, 'error');
+      }
+    }
+
+    function mutateConfig(mutator) {
+      try {
+        syncFormToState(false);
+      } catch (error) {
+        showMessage(error.message, 'error');
+        return;
+      }
+      const working = normalizeConfig(state.config || {});
+      mutator(working);
+      state.config = normalizeConfig(working);
+      renderConfig();
+    }
+
+    function syncFormToState(raiseOnError = true) {
+      try {
+        state.config = collectConfig();
+      } catch (error) {
+        if (raiseOnError) throw error;
+      }
+    }
+
+    function syncConfigConcurrencyFromStatus(status = state.status) {
+      if (!state.config || !status) return;
+      state.config = normalizeConfig({
+        ...state.config,
+        concurrency: {
+          ...state.config.concurrency,
+          loop: Number(status.loop_limit ?? state.config.concurrency?.loop ?? 1),
+          unit: status.unit || state.config.concurrency?.unit || 's',
+          stages: normalizeStages(status.stages || state.config.concurrency?.stages || []),
+        },
+      });
+    }
+
+    function collectConfig() {
+      const stages = collectStagesFromTable();
+      const requests = Array.from(els.requestsContainer.querySelectorAll('.request-card')).map((card) => ({
+        name: card.querySelector('[data-name="name"]').value.trim(),
+        method: card.querySelector('[data-name="method"]').value.trim().toUpperCase() || 'GET',
+        url: card.querySelector('[data-name="url"]').value.trim(),
+        timeout_ms: Number(card.querySelector('[data-name="timeout_ms"]').value || 5000),
+        body_type: card.querySelector('[data-name="body_type"]').value,
+        expected_status: Number(card.querySelector('[data-name="expected_status"]').value || 0),
+        headers: parseJSONObject(card.querySelector('[data-name="headers"]').value, 'headers'),
+        query: parseJSONObject(card.querySelector('[data-name="query"]').value, 'query'),
+        body: parseJSONObject(card.querySelector('[data-name="body"]').value, 'body'),
+        extractors: parseJSONObject(card.querySelector('[data-name="extractors"]').value, 'extractors'),
+        contains: splitLines(card.querySelector('[data-name="contains"]').value),
+      }));
+
+      return normalizeConfig({
+        app: { listen: els.listenInput.value.trim() },
+        reader: {
+          type: els.readerType.value.trim(),
+          file: els.readerFile.value.trim(),
+        },
+        concurrency: {
+          loop: Number(els.loopInput.value || 1),
+          unit: els.unitInput.value,
+          stages,
+        },
+        global: collectGlobalMap(),
+        requests,
+      });
+    }
+
+    function collectGlobalMap() {
+      const result = {};
+      const rows = Array.from(els.globalList.querySelectorAll('.kv-row'));
+      for (const row of rows) {
+        const key = row.querySelector('[data-field="key"]').value.trim();
+        const value = row.querySelector('[data-field="value"]').value;
+        if (!key && !value.trim()) {
+          continue;
+        }
+        if (!key) {
+          throw new Error('全局变量名称不能为空');
+        }
+        if (Object.prototype.hasOwnProperty.call(result, key)) {
+          throw new Error(`全局变量 ${key} 重复，请调整后再保存`);
+        }
+        result[key] = value;
+      }
+      return result;
+    }
+
+    function parseJSONObject(raw, fieldName) {
+      const text = raw.trim();
+      if (!text) return {};
+      try {
+        const parsed = JSON.parse(text);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          throw new Error(`${fieldName} 必须是 JSON 对象`);
+        }
+        return parsed;
+      } catch (error) {
+        throw new Error(`${fieldName} JSON 格式错误：${error.message}`);
+      }
+    }
+
+    function splitLines(raw) {
+      return raw.split(/\n+/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function renderConfig() {
+      const cfg = normalizeConfig(state.config || {});
+      state.config = cfg;
+      els.listenInput.value = cfg.app.listen || '';
+      els.readerType.value = cfg.reader.type || 'csv';
+      els.readerFile.value = cfg.reader.file || '';
+      els.readerFileName.textContent = cfg.reader.file ? shortFileName(cfg.reader.file) : '未选择';
+      els.loopInput.value = cfg.concurrency.loop;
+      els.unitInput.value = cfg.concurrency.unit;
+      renderGlobalVariables(cfg.global);
+      renderStages(cfg.concurrency.stages);
+      renderRequests(cfg.requests);
+      updateStageEditingState();
+      renderStageChart();
+    }
+
+    function renderGlobalVariables(globalVars) {
+      const entries = globalEntriesFromMap(globalVars);
+      if (!entries.length) {
+        els.globalList.innerHTML = '<div class="empty-state">当前还没有全局变量，点击“新增变量”逐条添加。</div>';
+        return;
+      }
+      els.globalList.innerHTML = entries.map(([key, value]) => `
+        <div class="kv-row">
+          <input data-field="key" value="${escapeHtml(key)}" placeholder="变量名，例如 host" />
+          <input data-field="value" value="${escapeHtml(value)}" placeholder="变量值，例如 https://example.com" />
+          <button type="button" class="danger" data-remove-global="1">删除</button>
+        </div>
+      `).join('');
+    }
+
+    function ensureGlobalListState() {
+      if (!els.globalList.querySelector('.kv-row')) {
+        els.globalList.innerHTML = '<div class="empty-state">当前还没有全局变量，点击“新增变量”逐条添加。</div>';
+      }
+    }
+
+    function renderStages(stages) {
+      const normalized = normalizeStages(stages);
+      els.stagesBody.innerHTML = normalized.map((stage, index) => {
+        const locked = isStageLocked(stage);
+        return `
+          <tr class="${locked ? 'stage-locked' : ''}">
+            <td><input data-field="label" value="${escapeHtml(stage.label || '')}" placeholder="例如 预热" ${locked ? 'disabled' : ''} /></td>
+            <td><input data-field="duration" type="number" value="${Number(stage.duration || 0)}" min="1" ${locked ? 'disabled' : ''} /></td>
+            <td><input data-field="target" type="number" value="${Number(stage.target || 0)}" min="0" ${locked ? 'disabled' : ''} /></td>
+            <td><span class="stage-badge ${locked ? 'locked' : 'editable'}">${locked ? '已锁定' : '可编辑'}</span></td>
+            <td><button class="danger" data-stage-index="${index}" ${locked ? 'disabled' : ''}>删除</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderRequests(requests) {
+      if (!requests.length) {
+        els.requestsContainer.innerHTML = '<div class="empty-state">当前还没有请求，点击“新增请求”开始配置压测链路。</div>';
+        return;
+      }
+      els.requestsContainer.innerHTML = requests.map((request, index) => {
+        const req = normalizeRequest(request);
+        return `
+          <div class="request-card">
+            <div class="request-head">
+              <label style="flex: 1; min-width: 220px;">
+                请求 ${index + 1} 名称
+                <input data-name="name" value="${escapeHtml(req.name)}" placeholder="例如 登录接口" />
+              </label>
+              <button class="danger" data-request-index="${index}">删除请求</button>
+            </div>
+            <div class="field-grid-3">
+              <label>
+                Method
+                <select data-name="method">
+                  ${['GET','POST','PUT','DELETE','PATCH'].map(method => `<option value="${method}" ${req.method === method ? 'selected' : ''}>${method}</option>`).join('')}
+                </select>
+              </label>
+              <label>
+                URL
+                <input data-name="url" value="${escapeHtml(req.url)}" placeholder="支持变量占位符" />
+              </label>
+            </div>
+            <div class="field-grid-3" style="margin-top: 12px;">
+              <label>
+                超时(ms)
+                <input data-name="timeout_ms" type="number" value="${Number(req.timeout_ms || 5000)}" min="1" />
+              </label>
+              <label>
+                Body 类型
+                <select data-name="body_type">
+                  ${[['','无'],['json','json'],['form','form'],['multipart','multipart']].map(([value, text]) => `<option value="${value}" ${req.body_type === value ? 'selected' : ''}>${text}</option>`).join('')}
+                </select>
+              </label>
+              <label>
+                期望状态码
+                <input data-name="expected_status" type="number" value="${Number(req.expected_status || 0)}" min="0" placeholder="留空或 0 表示不校验" />
+              </label>
+            </div>
+            <div class="field-grid" style="margin-top: 12px;">
+              <label>
+                Headers(JSON)
+                <textarea class="json-area" data-name="headers" spellcheck="false">${escapeHtml(stringifyPretty(req.headers))}</textarea>
+              </label>
+              <label>
+                Query(JSON)
+                <textarea class="json-area" data-name="query" spellcheck="false">${escapeHtml(stringifyPretty(req.query))}</textarea>
+              </label>
+            </div>
+            <div class="field-grid" style="margin-top: 12px;">
+              <label>
+                Body(JSON)
+                <textarea class="json-area" data-name="body" spellcheck="false">${escapeHtml(stringifyPretty(req.body))}</textarea>
+              </label>
+              <label>
+                提取器(JSON)
+                <textarea class="json-area" data-name="extractors" spellcheck="false">${escapeHtml(stringifyPretty(req.extractors))}</textarea>
+              </label>
+            </div>
+            <label style="margin-top: 12px;">
+              响应包含断言（每行一条）
+              <textarea data-name="contains" spellcheck="false">${escapeHtml((req.contains || []).join('\n'))}</textarea>
+            </label>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderStatus() {
+      const status = state.status || {};
+      const metrics = status.metrics || {};
+      const running = Boolean(status.running);
+      els.runBadge.textContent = running ? '运行中' : (status.message || '未启动');
+      els.runBadge.style.background = running ? 'rgba(52, 211, 153, 0.16)' : 'rgba(96, 165, 250, 0.12)';
+      els.runBadge.style.color = running ? '#d1fae5' : '#dbeafe';
+      els.startBtn.disabled = running;
+      els.stopBtn.disabled = !running;
+
+      els.metricTarget.textContent = status.current_target || 0;
+      els.metricWorkers.textContent = status.active_workers || 0;
+      els.metricTotal.textContent = metrics.total_requests || 0;
+      els.metricRps.textContent = (metrics.avg_rps || 0).toFixed(2);
+      els.metricSuccess.textContent = metrics.success || 0;
+      els.metricFailure.textContent = metrics.failure || 0;
+
+      els.statusLoop.value = status.current_loop || 0;
+      els.statusStage.value = status.current_stage || 0;
+      els.statusElapsed.value = status.elapsed || '-';
+      els.statusDataset.value = status.dataset_size || 0;
+      if (document.activeElement !== els.currentTargetInput) {
+        els.currentTargetInput.value = status.current_target || '';
+      }
+
+      const success = metrics.success || 0;
+      const failure = metrics.failure || 0;
+      const total = metrics.total_requests || 0;
+      const successRate = total > 0 ? ((success / total) * 100).toFixed(2) : '0.00';
+      els.successSummary.textContent = `成功：${success}\n失败：${failure}\n成功率：${successRate}%`;
+
+      const codes = metrics.status_codes || {};
+      els.statusCodes.textContent = Object.keys(codes).length
+        ? Object.entries(codes).map(([code, count]) => `${code}: ${count}`).join('\n')
+        : '暂无状态码数据';
+      els.lastError.textContent = metrics.last_error || '暂无错误';
+      els.stageSummary.textContent = (status.stages || []).length
+        ? status.stages.map((stage, index) => `${index + 1}. ${stage.label || '阶段'} | duration=${stage.duration} | target=${stage.target}`).join('\n')
+        : '暂无阶段信息';
+
+      updateStageEditingState();
+    }
+
+    function renderResults() {
+      const results = Array.isArray(state.results) ? state.results : [];
+      els.resultsCounter.textContent = results.length ? `最近 ${results.length} 条请求结果` : '暂无结果';
+      if (!results.length) {
+        els.resultsList.innerHTML = '<div class="empty-state">运行后，这里会展示每一次请求的完整请求信息、响应结果和错误详情。</div>';
+        return;
+      }
+      els.resultsList.innerHTML = results.map((item) => {
+        const badgeClass = item.success ? 'success' : 'error';
+        const statusText = item.status_code ? `HTTP ${item.status_code}` : '无状态码';
+        const queryText = formatBlockValue(item.query);
+        const requestHeaders = formatBlockValue(item.request_headers);
+        const responseHeaders = formatBlockValue(item.response_headers);
+        const extractors = formatBlockValue(item.extractors);
+        const contains = Array.isArray(item.contains) && item.contains.length ? item.contains.join('\n') : '无';
+        const requestBody = item.request_body || '无';
+        const responseBody = item.response_body || '无';
+        const errorText = item.error || '无';
+        return `
+          <details class="result-item" ${item.success ? '' : 'open'}>
+            <summary>
+              <div class="result-main">
+                <span class="result-badge ${badgeClass}">${item.success ? '成功' : '失败'}</span>
+                <strong>${escapeHtml(item.request_name || '未命名请求')}</strong>
+                <span class="subtle">${escapeHtml(item.method || 'GET')} ${escapeHtml(item.url || '-')}</span>
+              </div>
+              <div class="result-meta">
+                <span>${escapeHtml(formatDateTime(item.occurred_at))}</span>
+                <span>阶段 ${Number(item.stage || 0)}</span>
+                <span>循环 ${Number(item.loop || 0)}</span>
+                <span>Worker ${Number(item.worker_id || 0)}</span>
+                <span>${escapeHtml(statusText)}</span>
+                <span>${Number(item.duration_ms || 0)} ms</span>
+              </div>
+            </summary>
+            <div class="result-body">
+              <div class="result-section result-stack">
+                <h4>请求信息</h4>
+                <div>
+                  <span class="subtle">请求行</span>
+                  <div class="code-block">${escapeHtml(`${item.method || 'GET'} ${item.url || '-'}`)}</div>
+                </div>
+                <div>
+                  <span class="subtle">Query</span>
+                  <div class="code-block">${escapeHtml(queryText)}</div>
+                </div>
+                <div>
+                  <span class="subtle">Headers</span>
+                  <div class="code-block">${escapeHtml(requestHeaders)}</div>
+                </div>
+                <div>
+                  <span class="subtle">Body ${item.request_body_type ? `(${escapeHtml(item.request_body_type)})` : ''}</span>
+                  <div class="code-block">${escapeHtml(requestBody)}</div>
+                </div>
+                <div>
+                  <span class="subtle">断言 / 提取器</span>
+                  <div class="code-block">期望状态码：${escapeHtml(String(item.expected_status || 0))}\n包含断言：${escapeHtml(contains)}\n提取器：${escapeHtml(extractors)}</div>
+                </div>
+              </div>
+              <div class="result-section result-stack">
+                <h4>响应结果</h4>
+                <div>
+                  <span class="subtle">响应摘要</span>
+                  <div class="code-block">状态：${escapeHtml(statusText)}\n耗时：${Number(item.duration_ms || 0)} ms\n结果：${item.success ? '成功' : '失败'}</div>
+                </div>
+                <div>
+                  <span class="subtle">响应 Headers</span>
+                  <div class="code-block">${escapeHtml(responseHeaders)}</div>
+                </div>
+                <div>
+                  <span class="subtle">响应 Body</span>
+                  <div class="code-block">${escapeHtml(responseBody)}</div>
+                </div>
+                <div>
+                  <span class="subtle">错误信息</span>
+                  <div class="code-block">${escapeHtml(errorText)}</div>
+                </div>
+              </div>
+            </div>
+          </details>
+        `;
+      }).join('');
+    }
+
+    function renderRuntimeCharts() {
+      const points = buildRuntimeSeries(state.results || []);
+      renderLineChart(els.latencyChart, {
+        series: [{ name: '平均耗时', color: '#7dd3fc', values: points.map(point => ({ x: point.x, y: point.avgLatency })) }],
+        unit: 'ms',
+        emptyText: '暂无耗时数据',
+      });
+      renderLineChart(els.tpsChart, {
+        series: [
+          { name: '成功 QPS', color: '#34d399', values: points.map(point => ({ x: point.x, y: point.success })) },
+          { name: '失败 QPS', color: '#fbbf24', values: points.map(point => ({ x: point.x, y: point.failure })) },
+        ],
+        unit: 'qps',
+        emptyText: '暂无吞吐数据',
+      });
+    }
+
+    function buildRuntimeSeries(results) {
+      const items = results
+        .filter(item => item?.occurred_at)
+        .map(item => ({
+          time: new Date(item.occurred_at).getTime(),
+          duration: Number(item.duration_ms || 0),
+          success: Boolean(item.success),
+        }))
+        .filter(item => Number.isFinite(item.time))
+        .sort((left, right) => left.time - right.time);
+      if (!items.length) return [];
+
+      const buckets = new Map();
+      const firstSecond = Math.floor(items[0].time / 1000);
+      for (const item of items) {
+        const second = Math.floor(item.time / 1000);
+        const bucket = buckets.get(second) || { x: second - firstSecond, totalLatency: 0, count: 0, success: 0, failure: 0 };
+        bucket.totalLatency += item.duration;
+        bucket.count += 1;
+        if (item.success) {
+          bucket.success += 1;
+        } else {
+          bucket.failure += 1;
+        }
+        buckets.set(second, bucket);
+      }
+
+      return Array.from(buckets.values()).map(bucket => ({
+        ...bucket,
+        avgLatency: bucket.count ? bucket.totalLatency / bucket.count : 0,
+      }));
+    }
+
+    function renderLineChart(svgEl, options) {
+      const width = 520;
+      const height = 260;
+      const margin = { top: 18, right: 18, bottom: 36, left: 52 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      const allPoints = options.series.flatMap(item => item.values).filter(point => Number.isFinite(point.x) && Number.isFinite(point.y));
+      if (!allPoints.length) {
+        svgEl.innerHTML = `<rect width="${width}" height="${height}" fill="transparent"></rect><text x="${width / 2}" y="${height / 2}" fill="#9aa6b5" font-size="13" text-anchor="middle">${escapeHtml(options.emptyText)}</text>`;
+        return;
+      }
+
+      const xMax = Math.max(...allPoints.map(point => point.x), 1);
+      const yMax = Math.max(...allPoints.map(point => point.y), 1);
+      const xScale = (value) => margin.left + (Math.max(0, value) / xMax) * innerWidth;
+      const yScale = (value) => margin.top + innerHeight - (Math.max(0, value) / yMax) * innerHeight;
+      const svg = [`<rect width="${width}" height="${height}" fill="transparent"></rect>`];
+
+      for (let i = 0; i <= 4; i++) {
+        const ratio = i / 4;
+        const y = margin.top + ratio * innerHeight;
+        const value = yMax - ratio * yMax;
+        svg.push(`<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="rgba(148,163,184,0.13)"></line>`);
+        svg.push(`<text x="${margin.left - 10}" y="${y + 4}" fill="#9aa6b5" font-size="11" text-anchor="end">${formatChartValue(value)}</text>`);
+      }
+      for (let i = 0; i <= 4; i++) {
+        const ratio = i / 4;
+        const x = margin.left + ratio * innerWidth;
+        const value = xMax * ratio;
+        svg.push(`<line x1="${x}" y1="${margin.top}" x2="${x}" y2="${height - margin.bottom}" stroke="rgba(148,163,184,0.10)"></line>`);
+        svg.push(`<text x="${x}" y="${height - margin.bottom + 20}" fill="#9aa6b5" font-size="11" text-anchor="middle">${formatChartValue(value)}s</text>`);
+      }
+
+      for (const item of options.series) {
+        const values = item.values.filter(point => Number.isFinite(point.x) && Number.isFinite(point.y));
+        if (!values.length) continue;
+        const path = values.map((point, index) => `${index === 0 ? 'M' : 'L'} ${xScale(point.x)} ${yScale(point.y)}`).join(' ');
+        svg.push(`<path d="${path}" fill="none" stroke="${item.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>`);
+        values.forEach(point => {
+          svg.push(`<circle cx="${xScale(point.x)}" cy="${yScale(point.y)}" r="3.5" fill="${item.color}" stroke="#0c1118" stroke-width="1.5"></circle>`);
+        });
+      }
+
+      svg.push(`<line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(226,232,240,0.45)"></line>`);
+      svg.push(`<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(226,232,240,0.45)"></line>`);
+      svg.push(`<text x="${width / 2}" y="${height - 8}" fill="#cbd5e1" font-size="11" text-anchor="middle">时间（秒）</text>`);
+      svg.push(`<text x="15" y="${height / 2}" fill="#cbd5e1" font-size="11" text-anchor="middle" transform="rotate(-90 15 ${height / 2})">${escapeHtml(options.unit)}</text>`);
+      svgEl.innerHTML = svg.join('');
+    }
+
+    function updateStageEditingState() {
+      const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
+      const stages = collectStagesFromTableSafe();
+      rows.forEach((row, index) => {
+        const locked = isStageLocked(stages[index]);
+        row.classList.toggle('stage-locked', locked);
+        row.querySelectorAll('input').forEach((input) => {
+          input.disabled = locked;
+        });
+        const button = row.querySelector('button[data-stage-index]');
+        if (button) button.disabled = locked;
+        const badge = row.querySelector('.stage-badge');
+        if (badge) {
+          badge.textContent = locked ? '已锁定' : '可编辑';
+          badge.className = `stage-badge ${locked ? 'locked' : 'editable'}`;
+        }
+      });
+      const running = Boolean(state.status?.running);
+      els.syncStagesBtn.disabled = !running;
+      els.applyTargetBtn.disabled = !running;
+      els.currentTargetInput.disabled = !running;
+      els.loopInput.disabled = running;
+      els.unitInput.disabled = running;
+      els.timelineNote.textContent = running
+        ? '运行中会固定当前时间点之前的计划；如果想立刻改变当前并发，请使用“立即应用”。新增未来阶段后点击“同步到运行计划”，会从当前时间点之后开始生效。'
+        : '当前未运行时，所有阶段都可以自由调整；启动后会固定当前时间点之前的计划。';
+    }
+
+    function renderStageChart() {
+      const baseStages = getWorkingStages();
+      const unit = getRuntimeUnit();
+      const elapsedUnits = getElapsedUnits();
+      const loopLimit = getRuntimeLoopLimit();
+      const cycleDuration = getCycleDuration(baseStages);
+      const displayLoopCount = getChartLoopCount(loopLimit, cycleDuration, elapsedUnits);
+      const chartStages = expandStagesForChart(baseStages, displayLoopCount);
+      const maxDuration = Math.max(chartStages.at(-1)?.duration || cycleDuration || 1, Math.ceil(elapsedUnits), 1);
+      const maxTarget = Math.max(...baseStages.map(item => Number(item.target || 0)), Number(state.status?.current_target || 0), 1);
+      const width = 860;
+      const height = 320;
+      const margin = { top: 18, right: 20, bottom: 42, left: 56 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      const xMax = Math.max(maxDuration, 1);
+      const yMax = Math.max(maxTarget, 1);
+      const xScale = (value) => margin.left + (Math.max(0, Math.min(value, xMax)) / xMax) * innerWidth;
+      const yScale = (value) => margin.top + innerHeight - (Math.max(0, value) / yMax) * innerHeight;
+
+      const gridLinesX = 5;
+      const gridLinesY = 4;
+      const svg = [];
+      svg.push(`<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>`);
+
+      for (let i = 0; i <= gridLinesY; i++) {
+        const ratio = i / gridLinesY;
+        const y = margin.top + ratio * innerHeight;
+        const value = Math.round(yMax - ratio * yMax);
+        svg.push(`<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="rgba(148,163,184,0.12)" stroke-width="1"></line>`);
+        svg.push(`<text x="${margin.left - 10}" y="${y + 4}" fill="#95a3bd" font-size="11" text-anchor="end">${value}</text>`);
+      }
+
+      for (let i = 0; i <= gridLinesX; i++) {
+        const ratio = i / gridLinesX;
+        const value = xMax * ratio;
+        const x = margin.left + ratio * innerWidth;
+        svg.push(`<line x1="${x}" y1="${margin.top}" x2="${x}" y2="${height - margin.bottom}" stroke="rgba(148,163,184,0.10)" stroke-width="1"></line>`);
+        svg.push(`<text x="${x}" y="${height - margin.bottom + 20}" fill="#95a3bd" font-size="11" text-anchor="middle">${formatAxisNumber(value)}</text>`);
+      }
+
+      const currentX = xScale(elapsedUnits);
+      if (state.status?.running) {
+        svg.push(`<rect x="${margin.left}" y="${margin.top}" width="${Math.max(0, currentX - margin.left)}" height="${innerHeight}" fill="rgba(148,163,184,0.08)"></rect>`);
+      }
+
+      const segments = buildStepSegments(chartStages, elapsedUnits);
+      segments.forEach((segment) => {
+        svg.push(`<line x1="${xScale(segment.x1)}" y1="${yScale(segment.y1)}" x2="${xScale(segment.x2)}" y2="${yScale(segment.y2)}" stroke="${segment.locked ? 'rgba(148,163,184,0.92)' : '#60a5fa'}" stroke-width="4" stroke-linecap="round"></line>`);
+      });
+
+      chartStages.forEach((stage) => {
+        const locked = Boolean(state.status?.running) && Number(stage.duration || 0) <= elapsedUnits;
+        const x = xScale(stage.duration);
+        const y = yScale(stage.target);
+        svg.push(`<circle cx="${x}" cy="${y}" r="5.5" fill="${locked ? '#94a3b8' : '#60a5fa'}" stroke="#08111f" stroke-width="2"></circle>`);
+      });
+
+      if (state.status?.running) {
+        svg.push(`<line x1="${currentX}" y1="${margin.top}" x2="${currentX}" y2="${height - margin.bottom}" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="6 5"></line>`);
+        svg.push(`<text x="${Math.min(width - margin.right, currentX + 6)}" y="${margin.top + 16}" fill="#fbbf24" font-size="12">当前时间</text>`);
+      }
+
+      svg.push(`<line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(226,232,240,0.45)" stroke-width="1.2"></line>`);
+      svg.push(`<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(226,232,240,0.45)" stroke-width="1.2"></line>`);
+      svg.push(`<text x="${width / 2}" y="${height - 8}" fill="#cbd5e1" font-size="12" text-anchor="middle">时间（${unitLabel(unit)}）</text>`);
+      svg.push(`<text x="16" y="${height / 2}" fill="#cbd5e1" font-size="12" text-anchor="middle" transform="rotate(-90 16 ${height / 2})">并发数</text>`);
+
+      els.stageChart.innerHTML = svg.join('');
+      const lockedCount = getLockedStageCount(baseStages);
+      const editableCount = Math.max(0, baseStages.length - lockedCount);
+      if (state.status?.running) {
+        const loopText = loopLimit > 0
+          ? `第 ${Number(state.status?.current_loop || 1)} / ${loopLimit} 轮`
+          : `第 ${Number(state.status?.current_loop || 1)} 轮（无限循环）`;
+        const chartRangeText = loopLimit > 0
+          ? `总计划 ${formatAxisNumber(cycleDuration * loopLimit)} ${unitLabel(unit)}`
+          : `图上展示 ${displayLoopCount} 轮计划`;
+        els.chartMeta.textContent = `${loopText}，已运行 ${formatAxisNumber(elapsedUnits)} ${unitLabel(unit)}，单轮时长 ${formatAxisNumber(cycleDuration || 0)} ${unitLabel(unit)}，${chartRangeText}，未来可编辑 ${editableCount} 个阶段。`;
+      } else if (loopLimit > 0) {
+        els.chartMeta.textContent = `共 ${baseStages.length} 个阶段，循环 ${loopLimit} 轮，最大并发 ${yMax}，总时长 ${formatAxisNumber((cycleDuration || 0) * loopLimit)} ${unitLabel(unit)}。`;
+      } else {
+        els.chartMeta.textContent = `共 ${baseStages.length} 个阶段，最大并发 ${yMax}，单轮时长 ${formatAxisNumber(cycleDuration || 0)} ${unitLabel(unit)}，配置为无限循环。`;
+      }
+    }
+
+    function getRuntimeLoopLimit() {
+      const source = state.status?.loop_limit ?? state.config?.concurrency?.loop ?? els.loopInput.value;
+      const raw = Number(source || 1);
+      return Number.isFinite(raw) && raw !== 0 ? raw : 1;
+    }
+
+    function getCycleDuration(stages) {
+      return Math.max(0, Number(stages.at(-1)?.duration || 0));
+    }
+
+    function getChartLoopCount(loopLimit, cycleDuration, elapsedUnits) {
+      if (cycleDuration <= 0) return 1;
+      if (loopLimit > 0) return Math.max(1, loopLimit);
+      const currentLoop = Math.max(1, Number(state.status?.current_loop || 1));
+      const elapsedLoopCount = Math.max(1, Math.ceil(Math.max(0, elapsedUnits) / cycleDuration));
+      return Math.max(currentLoop + 1, elapsedLoopCount + 1, 2);
+    }
+
+    function expandStagesForChart(stages, loopCount) {
+      if (!Array.isArray(stages) || !stages.length) return [];
+      const cycleDuration = getCycleDuration(stages);
+      if (cycleDuration <= 0) {
+        return stages.map(stage => ({ ...stage }));
+      }
+      const expanded = [];
+      for (let loopIndex = 0; loopIndex < Math.max(1, loopCount); loopIndex++) {
+        const offset = loopIndex * cycleDuration;
+        stages.forEach((stage, index) => {
+          expanded.push({
+            ...stage,
+            chartLoop: loopIndex + 1,
+            chartIndex: index + 1,
+            duration: offset + Number(stage.duration || 0),
+          });
+        });
+      }
+      return expanded;
+    }
+
+    function buildStepSegments(stages, elapsedUnits) {
+      const segments = [];
+      if (!stages.length) return segments;
+      let startX = 0;
+      for (let i = 0; i < stages.length; i++) {
+        const stage = stages[i];
+        const endX = Math.max(startX, Number(stage.duration || 0));
+        addSegment(segments, startX, stage.target, endX, stage.target, elapsedUnits);
+        if (i < stages.length - 1) {
+          const nextTarget = Number(stages[i + 1].target || 0);
+          addSegment(segments, endX, stage.target, endX, nextTarget, elapsedUnits);
+        }
+        startX = endX;
+      }
+      return segments;
+    }
+
+    function addSegment(segments, x1, y1, x2, y2, elapsedUnits) {
+      const running = Boolean(state.status?.running);
+      if (!running) {
+        segments.push({ x1, y1, x2, y2, locked: false });
+        return;
+      }
+      const cutoff = Math.max(0, elapsedUnits);
+      if (x1 === x2) {
+        segments.push({ x1, y1, x2, y2, locked: x1 <= cutoff });
+        return;
+      }
+      if (x2 <= cutoff) {
+        segments.push({ x1, y1, x2, y2, locked: true });
+        return;
+      }
+      if (x1 >= cutoff) {
+        segments.push({ x1, y1, x2, y2, locked: false });
+        return;
+      }
+      segments.push({ x1, y1, x2: cutoff, y2, locked: true });
+      segments.push({ x1: cutoff, y1: y2, x2, y2, locked: false });
+    }
+
+    function getWorkingStages() {
+      const tableStages = collectStagesFromTableSafe();
+      if (!state.status?.running) {
+        if (tableStages.length) return normalizeStages(tableStages);
+        return normalizeStages(state.config?.concurrency?.stages || []);
+      }
+      const runtimeStages = getRuntimeStages();
+      const draftStages = tableStages.length ? tableStages : normalizeStages(state.config?.concurrency?.stages || runtimeStages);
+      return mergeStagesByCutoff(runtimeStages, draftStages, getRuntimeCutoff(runtimeStages));
+    }
+
+    function collectStagesFromTable() {
+      const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
+      const stages = rows.map((row) => ({
+        label: row.querySelector('[data-field="label"]').value.trim(),
+        duration: Number(row.querySelector('[data-field="duration"]').value || 0),
+        target: Number(row.querySelector('[data-field="target"]').value || 0),
+      }));
+      return normalizeStages(stages);
+    }
+
+    function collectStagesFromTableSafe() {
+      try {
+        return collectStagesFromTable();
+      } catch {
+        return normalizeStages(state.config?.concurrency?.stages || []);
+      }
+    }
+
+    function normalizeConfig(cfg) {
+      return {
+        app: { listen: cfg?.app?.listen || ':8080' },
+        reader: {
+          type: cfg?.reader?.type ?? 'csv',
+          file: cfg?.reader?.file ?? '',
+        },
+        concurrency: {
+          loop: Number(cfg?.concurrency?.loop ?? 1),
+          unit: cfg?.concurrency?.unit || 's',
+          stages: normalizeStages(cfg?.concurrency?.stages),
+        },
+        global: normalizeStringMap(cfg?.global),
+        requests: Array.isArray(cfg?.requests) ? cfg.requests.map(normalizeRequest) : [],
+      };
+    }
+
+    function normalizeStages(stages) {
+      const source = Array.isArray(stages) && stages.length ? stages : [{ label: '默认阶段', duration: 30, target: 1 }];
+      let lastDuration = 0;
+      return source.map((stage, index) => {
+        const duration = Math.max(lastDuration + 1, Number(stage?.duration || 0) || (index + 1) * 10);
+        const target = Math.max(0, Number(stage?.target || 0));
+        lastDuration = duration;
+        return {
+          label: String(stage?.label || ''),
+          duration,
+          target,
+        };
+      });
+    }
+
+    function normalizeRequest(req = {}) {
+      return {
+        name: req.name || '',
+        method: (req.method || 'GET').toUpperCase(),
+        url: req.url || '',
+        timeout_ms: Number(req.timeout_ms || 5000),
+        body_type: req.body_type || '',
+        expected_status: Number(req.expected_status || 0),
+        headers: normalizeStringMap(req.headers),
+        query: isObject(req.query) ? req.query : {},
+        body: isObject(req.body) ? req.body : {},
+        extractors: normalizeStringMap(req.extractors),
+        contains: Array.isArray(req.contains) ? req.contains : [],
+      };
+    }
+
+    function defaultRequest() {
+      return normalizeRequest({
+        name: '新请求',
+        method: 'GET',
+        url: 'https://postman-echo.com/get',
+      });
+    }
+
+    function globalEntriesFromMap(globalVars) {
+      return Object.entries(normalizeStringMap(globalVars)).sort(([left], [right]) => left.localeCompare(right, 'zh-CN'));
+    }
+
+    function normalizeStringMap(value) {
+      if (!isObject(value)) return {};
+      return Object.fromEntries(
+        Object.entries(value)
+          .filter(([key]) => String(key || '').trim())
+          .map(([key, itemValue]) => [String(key).trim(), itemValue == null ? '' : String(itemValue)])
+      );
+    }
+
+    function nextGlobalKey(globalVars) {
+      let index = 1;
+      while (Object.prototype.hasOwnProperty.call(globalVars, `var_${index}`)) {
+        index += 1;
+      }
+      return `var_${index}`;
+    }
+
+    function getRuntimeStages() {
+      return normalizeStages(state.status?.stages || state.config?.concurrency?.stages || []);
+    }
+
+    function getElapsedUnitsInCycle(stages = getRuntimeStages()) {
+      const cycleDuration = getCycleDuration(stages);
+      if (cycleDuration <= 0) return 0;
+      const elapsed = Math.max(0, getElapsedUnits());
+      return elapsed % cycleDuration;
+    }
+
+    function getRuntimeCutoff(stages = getRuntimeStages()) {
+      if (!state.status?.running) return 0;
+      return Math.max(0, Math.floor(getElapsedUnitsInCycle(stages) + 1e-6));
+    }
+
+    function takeStagesUntil(stages, cutoff) {
+      const normalized = normalizeStages(stages);
+      if (!normalized.length || cutoff <= 0) return [];
+      const locked = [];
+      let previous = 0;
+      for (const stage of normalized) {
+        const duration = Number(stage.duration || 0);
+        if (duration <= cutoff) {
+          locked.push({ ...stage, duration });
+          previous = duration;
+          continue;
+        }
+        if (cutoff > previous) {
+          locked.push({ ...stage, duration: cutoff });
+        }
+        break;
+      }
+      return normalizeStages(locked);
+    }
+
+    function mergeStagesByCutoff(runtimeStages, draftStages, cutoff) {
+      const locked = takeStagesUntil(runtimeStages, cutoff);
+      const future = normalizeStages(draftStages).filter(stage => Number(stage.duration || 0) > cutoff);
+      const merged = [...locked, ...future];
+      return merged.length ? normalizeStages(merged) : normalizeStages(runtimeStages);
+    }
+
+    function sameStages(left, right) {
+      const normalizedLeft = normalizeStages(left);
+      const normalizedRight = normalizeStages(right);
+      if (normalizedLeft.length !== normalizedRight.length) return false;
+      return normalizedLeft.every((stage, index) => {
+        const other = normalizedRight[index];
+        return stage.label === other.label && stage.duration === other.duration && stage.target === other.target;
+      });
+    }
+
+    function isStageLocked(stage) {
+      if (!state.status?.running || !stage) return false;
+      return Number(stage.duration || 0) <= getRuntimeCutoff();
+    }
+
+    function getLockedStageCount(stages = getWorkingStages()) {
+      if (!state.status?.running) return 0;
+      return normalizeStages(stages).filter(stage => isStageLocked(stage)).length;
+    }
+
+    function syncLockedStagesFromStatus() {
+      if (!state.status?.running || !state.config) return;
+      const runtimeStages = getRuntimeStages();
+      if (!runtimeStages.length) return;
+      const localStages = collectStagesFromTableSafe();
+      const mergedStages = mergeStagesByCutoff(runtimeStages, localStages, getRuntimeCutoff(runtimeStages));
+      const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
+      state.config.concurrency.stages = mergedStages;
+      if (!rows.length || !sameStages(localStages, mergedStages)) {
+        renderStages(mergedStages);
+        return;
+      }
+      updateStageEditingState();
+    }
+
+    function getElapsedUnits() {
+      const elapsedMS = Number(state.status?.elapsed_ms || 0);
+      return elapsedMS / unitToMilliseconds(getRuntimeUnit());
+    }
+
+    function getRuntimeUnit() {
+      return state.status?.unit || els.unitInput.value || state.config?.concurrency?.unit || 's';
+    }
+
+    function unitToMilliseconds(unit) {
+      switch (unit) {
+        case 'm': return 60 * 1000;
+        case 'h': return 60 * 60 * 1000;
+        default: return 1000;
+      }
+    }
+
+    function unitLabel(unit) {
+      switch (unit) {
+        case 'm': return '分钟';
+        case 'h': return '小时';
+        default: return '秒';
+      }
+    }
+
+    function inferNextTarget(stages) {
+      if (state.status?.running) {
+        return Math.max(0, Number(state.status.current_target || 1));
+      }
+      if (!Array.isArray(stages) || !stages.length) return 1;
+      return Number(stages[stages.length - 1].target || 1);
+    }
+
+    function nextDuration(stages, anchor = null) {
+      if (Number.isFinite(anchor) && anchor >= 0) {
+        return Math.max(1, Math.floor(anchor) + 1);
+      }
+      if (!Array.isArray(stages) || !stages.length) return 30;
+      const max = Math.max(...stages.map(item => Number(item.duration || 0)));
+      return max + Math.max(1, Math.round(max * 0.25), 10);
+    }
+
+    function formatBlockValue(value) {
+      if (Array.isArray(value)) {
+        return value.length ? value.join('\n') : '无';
+      }
+      if (isObject(value)) {
+        return Object.keys(value).length ? JSON.stringify(value, null, 2) : '无';
+      }
+      if (value === null || value === undefined || value === '') {
+        return '无';
+      }
+      return String(value);
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+      return date.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function stringifyPretty(value) {
+      if (!value || (typeof value === 'object' && !Object.keys(value).length)) {
+        return '{}';
+      }
+      return JSON.stringify(value, null, 2);
+    }
+
+    function downloadTextFile(fileName, content) {
+      const blob = new Blob([content], { type: 'application/x-yaml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function isObject(value) {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+
+    function formatAxisNumber(value) {
+      return Number(value).toFixed(value >= 10 || Number.isInteger(value) ? 0 : 1);
+    }
+
+    function formatChartValue(value) {
+      if (value >= 100) return Number(value).toFixed(0);
+      if (value >= 10) return Number(value).toFixed(1).replace(/\.0$/, '');
+      return Number(value).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function shortFileName(path) {
+      const clean = String(path || '').trim();
+      if (!clean) return '未选择';
+      return clean.split(/[\\/]/).filter(Boolean).pop() || clean;
+    }
+
+    function showMessage(message, type = 'success') {
+      els.message.textContent = message;
+      els.message.className = `message show ${type}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    init();
+  </script>
+</body>
+</html>
