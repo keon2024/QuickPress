@@ -264,6 +264,7 @@ func (s *Server) handleRunResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit := 120
+	failuresOnly := parseBoolQuery(r.URL.Query().Get("failures"))
 	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil {
@@ -273,8 +274,17 @@ func (s *Server) handleRunResults(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"results": s.manager.Results(limit),
+		"results": s.manager.Results(limit, failuresOnly),
 	})
+}
+
+func parseBoolQuery(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Server) handleRunAdjust(w http.ResponseWriter, r *http.Request) {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -79,8 +78,8 @@ func Default() Config {
 			Unit: UnitSecond,
 			Stages: []Stage{
 				{Label: "预热", Duration: 10, Target: 2},
-				{Label: "稳定", Duration: 30, Target: 6},
-				{Label: "冲刺", Duration: 60, Target: 10},
+				{Label: "稳定", Duration: 20, Target: 6},
+				{Label: "冲刺", Duration: 30, Target: 10},
 			},
 		},
 		Reader: ReaderConfig{
@@ -183,19 +182,14 @@ func (c *Config) Normalize() {
 		c.Concurrency.Stages = []Stage{{Label: "默认阶段", Duration: 30, Target: 1}}
 	}
 
-	sort.Slice(c.Concurrency.Stages, func(i, j int) bool {
-		return c.Concurrency.Stages[i].Duration < c.Concurrency.Stages[j].Duration
-	})
-	prev := 0
 	for i := range c.Concurrency.Stages {
 		stage := &c.Concurrency.Stages[i]
-		if stage.Duration <= prev {
-			stage.Duration = prev + 1
+		if stage.Duration <= 0 {
+			stage.Duration = 1
 		}
 		if stage.Target < 0 {
 			stage.Target = 0
 		}
-		prev = stage.Duration
 	}
 
 	c.Reader.Type = strings.ToLower(strings.TrimSpace(c.Reader.Type))

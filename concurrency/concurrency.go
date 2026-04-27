@@ -3,7 +3,6 @@ package concurrency
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -141,14 +140,14 @@ func (m *Manager) Status() Status {
 	return runner.Status()
 }
 
-func (m *Manager) Results(limit int) []RequestLog {
+func (m *Manager) Results(limit int, failuresOnly bool) []RequestLog {
 	m.mu.Lock()
 	runner := m.runner
 	m.mu.Unlock()
 	if runner == nil {
 		return []RequestLog{}
 	}
-	return runner.Results(limit)
+	return runner.Results(limit, failuresOnly)
 }
 
 type Runner struct {
@@ -237,11 +236,7 @@ func (r *Runner) AdjustTarget(target int) error {
 	prefix := stagesUpToDuration(existing, cutoff)
 	suffix := stagesAfterDuration(existing, cutoff)
 	if len(suffix) == 0 {
-		nextDuration := existing[len(existing)-1].Duration
-		if nextDuration <= cutoff {
-			nextDuration = cutoff + 1
-		}
-		suffix = []config.Stage{{Label: "运行中调整", Duration: nextDuration, Target: target}}
+		suffix = []config.Stage{{Label: "运行中调整", Duration: 1, Target: target}}
 	} else {
 		suffix[0].Target = target
 	}
@@ -281,7 +276,7 @@ func (r *Runner) ReplaceStages(stages []config.Stage) error {
 		existing = []config.Stage{{Label: "运行中阶段", Duration: 1, Target: int(r.currentTarget.Load())}}
 	}
 
-	cutoff := scheduleCutoffDuration(oldConcurrency, elapsed)
+	cutoff := completedStageCutoffDuration(oldConcurrency, elapsed)
 	merged := mergeStagesAtDuration(existing, stages, cutoff)
 	if len(merged) == 0 {
 		return fmt.Errorf("至少保留一个阶段")
@@ -447,8 +442,8 @@ func (r *Runner) spawnWorkerLocked() {
 	}()
 }
 
-func (r *Runner) Results(limit int) []RequestLog {
-	return r.logs.Results(limit)
+func (r *Runner) Results(limit int, failuresOnly bool) []RequestLog {
+	return r.logs.Results(limit, failuresOnly)
 }
 
 func (r *Runner) buildRequestLogs(workerID int, result requests.Result) []RequestLog {
@@ -553,11 +548,24 @@ func scheduleCutoffDuration(conc config.Concurrency, elapsed time.Duration) int 
 	if cutoff < 0 {
 		return 0
 	}
-	maxDuration := stages[len(stages)-1].Duration
+	maxDuration := totalStageDuration(stages)
 	if cutoff > maxDuration {
 		return maxDuration
 	}
 	return cutoff
+}
+
+func completedStageCutoffDuration(conc config.Concurrency, elapsed time.Duration) int {
+	cutoff := scheduleCutoffDuration(conc, elapsed)
+	completed := 0
+	for _, stage := range normalizedStages(conc.Stages) {
+		next := completed + stage.Duration
+		if next > cutoff {
+			break
+		}
+		completed = next
+	}
+	return completed
 }
 
 func stagesUpToDuration(stages []config.Stage, cutoff int) []config.Stage {
@@ -566,15 +574,16 @@ func stagesUpToDuration(stages []config.Stage, cutoff int) []config.Stage {
 		return nil
 	}
 	result := make([]config.Stage, 0, len(normalized))
-	previous := 0
+	elapsed := 0
 	for _, stage := range normalized {
-		if stage.Duration <= cutoff {
+		stageEnd := elapsed + stage.Duration
+		if stageEnd <= cutoff {
 			result = append(result, stage)
-			previous = stage.Duration
+			elapsed = stageEnd
 			continue
 		}
-		if cutoff > previous {
-			stage.Duration = cutoff
+		if cutoff > elapsed {
+			stage.Duration = cutoff - elapsed
 			result = append(result, stage)
 		}
 		break
@@ -588,10 +597,20 @@ func stagesAfterDuration(stages []config.Stage, cutoff int) []config.Stage {
 		return nil
 	}
 	result := make([]config.Stage, 0, len(normalized))
+	elapsed := 0
 	for _, stage := range normalized {
-		if stage.Duration > cutoff {
+		stageEnd := elapsed + stage.Duration
+		if stageEnd <= cutoff {
+			elapsed = stageEnd
+			continue
+		}
+		if cutoff > elapsed {
+			stage.Duration = stageEnd - cutoff
+			result = append(result, stage)
+		} else {
 			result = append(result, stage)
 		}
+		elapsed = stageEnd
 	}
 	return normalizedStages(result)
 }
@@ -623,7 +642,7 @@ func scheduleCycleDuration(conc config.Concurrency) time.Duration {
 	if len(stages) == 0 {
 		return 0
 	}
-	return time.Duration(stages[len(stages)-1].Duration) * stageUnitDuration(conc.Unit)
+	return time.Duration(totalStageDuration(stages)) * stageUnitDuration(conc.Unit)
 }
 
 func resolveSchedule(conc config.Concurrency, elapsed time.Duration) (target int, stageIdx int, loopIdx int, finished bool) {
@@ -632,7 +651,7 @@ func resolveSchedule(conc config.Concurrency, elapsed time.Duration) (target int
 		return 1, 0, 1, false
 	}
 	unit := stageUnitDuration(conc.Unit)
-	cycleDuration := time.Duration(stages[len(stages)-1].Duration) * unit
+	cycleDuration := time.Duration(totalStageDuration(stages)) * unit
 	if cycleDuration <= 0 {
 		return stages[len(stages)-1].Target, len(stages) - 1, 1, false
 	}
@@ -646,8 +665,10 @@ func resolveSchedule(conc config.Concurrency, elapsed time.Duration) (target int
 
 	loopIdx = int(elapsed/cycleDuration) + 1
 	pos := elapsed % cycleDuration
+	stageEnd := time.Duration(0)
 	for i, stage := range stages {
-		if pos < time.Duration(stage.Duration)*unit {
+		stageEnd += time.Duration(stage.Duration) * unit
+		if pos < stageEnd {
 			return stage.Target, i, loopIdx, false
 		}
 	}
@@ -659,20 +680,23 @@ func normalizedStages(stages []config.Stage) []config.Stage {
 		return nil
 	}
 	out := append([]config.Stage(nil), stages...)
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].Duration < out[j].Duration
-	})
-	prev := 0
 	for i := range out {
-		if out[i].Duration <= prev {
-			out[i].Duration = prev + 1
+		if out[i].Duration <= 0 {
+			out[i].Duration = 1
 		}
 		if out[i].Target < 0 {
 			out[i].Target = 0
 		}
-		prev = out[i].Duration
 	}
 	return out
+}
+
+func totalStageDuration(stages []config.Stage) int {
+	total := 0
+	for _, stage := range normalizedStages(stages) {
+		total += stage.Duration
+	}
+	return total
 }
 
 func stageUnitDuration(unit string) time.Duration {
@@ -691,6 +715,7 @@ type requestLogBuffer struct {
 	nextID   uint64
 	capacity int
 	entries  []RequestLog
+	failures []RequestLog
 }
 
 func newRequestLogBuffer(capacity int) *requestLogBuffer {
@@ -709,6 +734,9 @@ func (b *requestLogBuffer) Append(items []RequestLog) {
 	for _, item := range items {
 		b.nextID++
 		item.ID = b.nextID
+		if !item.Success {
+			b.failures = append(b.failures, cloneRequestLog(item))
+		}
 		if len(b.entries) == b.capacity {
 			copy(b.entries, b.entries[1:])
 			b.entries[len(b.entries)-1] = item
@@ -718,18 +746,22 @@ func (b *requestLogBuffer) Append(items []RequestLog) {
 	}
 }
 
-func (b *requestLogBuffer) Results(limit int) []RequestLog {
+func (b *requestLogBuffer) Results(limit int, failuresOnly bool) []RequestLog {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if len(b.entries) == 0 {
+	source := b.entries
+	if failuresOnly {
+		source = b.failures
+	}
+	if len(source) == 0 {
 		return []RequestLog{}
 	}
-	if limit <= 0 || limit > len(b.entries) {
-		limit = len(b.entries)
+	if limit <= 0 || limit > len(source) {
+		limit = len(source)
 	}
 	result := make([]RequestLog, 0, limit)
-	for i := len(b.entries) - 1; i >= 0 && len(result) < limit; i-- {
-		result = append(result, cloneRequestLog(b.entries[i]))
+	for i := len(source) - 1; i >= 0 && len(result) < limit; i-- {
+		result = append(result, cloneRequestLog(source[i]))
 	}
 	return result
 }

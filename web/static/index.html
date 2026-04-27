@@ -81,13 +81,24 @@
     }
 
     .toolbar {
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto minmax(260px, 360px);
       align-items: center;
       margin-bottom: 14px;
       padding: 12px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--surface);
+    }
+
+    .run-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+
+    .run-actions button {
+      width: 100%;
     }
 
     .grid {
@@ -232,6 +243,11 @@
       color: var(--muted);
       border-style: dashed;
     }
+    button.active {
+      background: rgba(167, 243, 208, 0.18);
+      border-color: rgba(167, 243, 208, 0.48);
+      color: #d1fae5;
+    }
     button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -253,6 +269,17 @@
       margin-top: 14px;
     }
 
+    .chart-shell.expanded {
+      position: fixed;
+      inset: 24px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      background: rgba(17, 23, 32, 0.96);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
+    }
+
     .chart-head {
       display: flex;
       justify-content: space-between;
@@ -262,12 +289,44 @@
       margin-bottom: 10px;
     }
 
+    .chart-head h3 {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      min-width: 0;
+      font-size: 14px;
+    }
+
     .chart-legend {
       display: flex;
       gap: 14px;
       flex-wrap: wrap;
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .chart-head-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chart-zoom-btn {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      background: rgba(148, 163, 184, 0.12);
+      color: #dbeafe;
+      font-size: 14px;
+      line-height: 1;
     }
 
     .legend-item {
@@ -285,6 +344,8 @@
 
     .legend-line.locked { border-top-color: rgba(148, 163, 184, 0.9); }
     .legend-line.current { border-top-color: var(--warn); }
+    .legend-line.success { border-top-color: var(--success); }
+    .legend-line.failure { border-top-color: var(--danger); }
 
     .chart-frame {
       width: 100%;
@@ -297,10 +358,20 @@
 
     .runtime-chart .chart-frame { min-height: 230px; }
 
+    .runtime-chart.expanded .chart-frame {
+      flex: 1;
+      min-height: 0;
+      height: calc(100vh - 140px);
+    }
+
     .chart-svg {
       display: block;
       width: 100%;
       height: auto;
+    }
+
+    .runtime-chart.expanded .chart-svg {
+      height: 100%;
     }
 
     .timeline-note {
@@ -313,9 +384,30 @@
     .stage-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
       overflow: hidden;
       border-radius: 8px;
+    }
+
+    .stage-table-wrap {
+      margin-top: 12px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: var(--panel-strong);
+    }
+
+    .stage-table-wrap.scrollable {
+      max-height: 286px;
+    }
+
+    .stage-table-wrap .stage-table {
+      margin-top: 0;
+    }
+
+    .stage-table-wrap.scrollable .stage-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     .stage-table th, .stage-table td {
@@ -333,6 +425,14 @@
 
     .stage-table tr.stage-locked td {
       background: rgba(100, 116, 139, 0.08);
+    }
+
+    .stage-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
     }
 
     .stage-badge {
@@ -569,7 +669,7 @@
 
     @media (max-width: 1180px) {
       .grid { grid-template-columns: 1fr; }
-      .toolbar { grid-template-columns: 1fr 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr 2fr; }
       .toolbar .toolbar-spacer { display: none; }
     }
 
@@ -598,8 +698,10 @@
       <div class="subtle toolbar-spacer">当前配置由控制台默认文件管理，也可以从本地导入后保存覆盖。</div>
       <button id="importBtn" class="secondary">导入配置</button>
       <button id="saveBtn" class="secondary">保存配置</button>
-      <button id="startBtn">启动压测</button>
-      <button id="stopBtn" class="danger">停止</button>
+      <div class="run-actions">
+        <button id="startBtn">启动压测</button>
+        <button id="stopBtn" class="danger">停止</button>
+      </div>
     </section>
     <input id="importFileInput" type="file" accept=".yml,.yaml,.json" hidden />
     <input id="readerFileInput" type="file" accept=".csv,text/csv" hidden />
@@ -654,10 +756,6 @@
               <h3>并发阶段</h3>
               <div class="subtle">横坐标是时间，纵坐标是并发数。运行后当前时间之前自动锁定，未来计划仍可调整。</div>
             </div>
-            <div class="row">
-              <button id="syncStagesBtn" class="secondary">同步到运行计划</button>
-              <button id="addStageBtn" class="ghost">新增未来阶段</button>
-            </div>
           </div>
 
           <div class="chart-shell">
@@ -675,18 +773,24 @@
             <div id="timelineNote" class="timeline-note">当前未运行时，所有阶段都可以自由调整；启动后会自动锁定当前时间之前的阶段。</div>
           </div>
 
-          <table class="stage-table">
-            <thead>
-              <tr>
-                <th>标签</th>
-                <th>累计时长</th>
-                <th>目标并发</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="stagesBody"></tbody>
-          </table>
+          <div id="stageTableWrap" class="stage-table-wrap">
+            <table class="stage-table">
+              <thead>
+                <tr>
+                  <th>标签</th>
+                  <th>持续时长</th>
+                  <th>目标并发</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="stagesBody"></tbody>
+            </table>
+          </div>
+          <div class="stage-actions">
+            <button id="addStageBtn" class="ghost">新增未来阶段</button>
+            <button id="syncStagesBtn" class="secondary">同步到运行计划</button>
+          </div>
           </div>
           </div>
         </details>
@@ -737,15 +841,19 @@
           <div class="chart-grid" style="margin-top: 14px;">
             <div class="chart-shell runtime-chart">
               <div class="chart-head">
-                <h3>Response Times Over Time</h3>
-                <div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>平均耗时</span></div>
+                <h3>Response Times Over Time <button type="button" class="secondary chart-zoom-btn" data-chart-zoom="latency" data-chart-title="Response Times Over Time" aria-label="放大 Response Times Over Time 图表" title="放大">⛶</button></h3>
+                <div class="chart-head-actions">
+                  <div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>平均耗时</span></div>
+                </div>
               </div>
               <div class="chart-frame"><svg id="latencyChart" class="chart-svg" viewBox="0 0 520 260" preserveAspectRatio="none"></svg></div>
             </div>
             <div class="chart-shell runtime-chart">
               <div class="chart-head">
-                <h3>Transactions Per Second</h3>
-                <div class="chart-legend"><span class="legend-item"><span class="legend-line"></span>成功 QPS</span><span class="legend-item"><span class="legend-line current"></span>失败 QPS</span></div>
+                <h3>Transactions Per Second <button type="button" class="secondary chart-zoom-btn" data-chart-zoom="tps" data-chart-title="Transactions Per Second" aria-label="放大 Transactions Per Second 图表" title="放大">⛶</button></h3>
+                <div class="chart-head-actions">
+                  <div class="chart-legend"><span class="legend-item"><span class="legend-line success"></span>成功 QPS</span><span class="legend-item"><span class="legend-line failure"></span>失败 QPS</span></div>
+                </div>
               </div>
               <div class="chart-frame"><svg id="tpsChart" class="chart-svg" viewBox="0 0 520 260" preserveAspectRatio="none"></svg></div>
             </div>
@@ -803,6 +911,7 @@
             <div class="row">
               <span id="resultsCounter" class="subtle">暂无结果</span>
               <button id="refreshResultsBtn" class="secondary">刷新结果</button>
+              <button id="failedResultsBtn" class="secondary">失败请求</button>
             </div>
           </div>
           <div id="resultsList" class="results-list"></div>
@@ -818,6 +927,11 @@
       config: null,
       status: null,
       results: [],
+      chartResults: [],
+      expandedChart: null,
+      resultFilter: 'recent',
+      openResultIds: new Set(),
+      closedResultIds: new Set(),
       lastResultsRefreshAt: 0,
       refreshTimer: null,
     };
@@ -842,6 +956,7 @@
       applyTargetBtn: document.getElementById('applyTargetBtn'),
       syncStagesBtn: document.getElementById('syncStagesBtn'),
       addStageBtn: document.getElementById('addStageBtn'),
+      stageTableWrap: document.getElementById('stageTableWrap'),
       stagesBody: document.getElementById('stagesBody'),
       stageChart: document.getElementById('stageChart'),
       chartMeta: document.getElementById('chartMeta'),
@@ -852,6 +967,7 @@
       requestsContainer: document.getElementById('requestsContainer'),
       refreshStatusBtn: document.getElementById('refreshStatusBtn'),
       refreshResultsBtn: document.getElementById('refreshResultsBtn'),
+      failedResultsBtn: document.getElementById('failedResultsBtn'),
       resultsCounter: document.getElementById('resultsCounter'),
       resultsList: document.getElementById('resultsList'),
       metricTarget: document.getElementById('metricTarget'),
@@ -888,15 +1004,25 @@
       els.startBtn.addEventListener('click', startRun);
       els.stopBtn.addEventListener('click', stopRun);
       els.refreshStatusBtn.addEventListener('click', refreshStatus);
-      els.refreshResultsBtn.addEventListener('click', () => refreshResults(true));
+      els.refreshResultsBtn.addEventListener('click', () => {
+        state.resultFilter = 'recent';
+        refreshResults(true);
+      });
+      els.failedResultsBtn.addEventListener('click', () => {
+        state.resultFilter = 'failed';
+        refreshResults(true);
+      });
       els.unitInput.addEventListener('change', renderStageChart);
       els.loopInput.addEventListener('input', renderStageChart);
-      els.addStageBtn.addEventListener('click', () => mutateConfig(cfg => {
-        const stages = getWorkingStages();
-        const next = nextDuration(stages, getRuntimeCutoff(getRuntimeStages()));
-        cfg.concurrency.stages = stages;
-        cfg.concurrency.stages.push({ label: '', duration: next, target: inferNextTarget(stages) });
-      }));
+      els.addStageBtn.addEventListener('click', () => {
+        mutateConfig(cfg => {
+          const stages = getWorkingStages();
+          const next = nextDuration(stages);
+          cfg.concurrency.stages = stages;
+          cfg.concurrency.stages.push({ label: '', duration: next, target: inferNextTarget(stages) });
+        });
+        focusLastEditableStage();
+      });
       els.syncStagesBtn.addEventListener('click', syncStages);
       els.applyTargetBtn.addEventListener('click', applyTarget);
       els.addGlobalBtn.addEventListener('click', () => mutateConfig(cfg => {
@@ -941,6 +1067,57 @@
           cfg.requests.splice(index, 1);
         });
       });
+
+      els.resultsList.addEventListener('toggle', (event) => {
+        const details = event.target.closest?.('details.result-item');
+        if (!details) return;
+        const id = details.dataset.resultId;
+        if (!id) return;
+        if (details.open) {
+          state.openResultIds.add(id);
+          state.closedResultIds.delete(id);
+        } else {
+          state.openResultIds.delete(id);
+          state.closedResultIds.add(id);
+        }
+      }, true);
+
+      document.addEventListener('click', (event) => {
+        const btn = event.target.closest('button[data-chart-zoom]');
+        if (!btn) return;
+        toggleRuntimeChartZoom(btn.dataset.chartZoom);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && state.expandedChart) {
+          toggleRuntimeChartZoom(state.expandedChart);
+        }
+      });
+    }
+
+    function toggleRuntimeChartZoom(chartName) {
+      const button = document.querySelector(`button[data-chart-zoom="${chartName}"]`);
+      const shell = button?.closest('.runtime-chart');
+      if (!button || !shell) return;
+
+      document.querySelectorAll('.runtime-chart.expanded').forEach(item => {
+        if (item !== shell) {
+          item.classList.remove('expanded');
+          const otherButton = item.querySelector('button[data-chart-zoom]');
+          if (otherButton) {
+            otherButton.textContent = '⛶';
+            otherButton.title = '放大';
+            otherButton.setAttribute('aria-label', `放大 ${otherButton.dataset.chartTitle || '图表'} 图表`);
+          }
+        }
+      });
+
+      const expanded = !shell.classList.contains('expanded');
+      shell.classList.toggle('expanded', expanded);
+      button.textContent = expanded ? '⛶' : '⛶';
+      button.title = expanded ? '缩小' : '放大';
+      button.setAttribute('aria-label', `${expanded ? '缩小' : '放大'} ${button.dataset.chartTitle || '图表'} 图表`);
+      state.expandedChart = expanded ? chartName : null;
     }
 
     async function api(url, options = {}) {
@@ -1105,13 +1282,20 @@
 
     async function refreshResults(showToast = false) {
       try {
-        const payload = await api('/api/run/results?limit=120');
+        const query = state.resultFilter === 'failed' ? '?failures=true&limit=0' : '?limit=120';
+        const payload = await api(`/api/run/results${query}`);
         state.results = Array.isArray(payload.results) ? payload.results : [];
+        if (state.resultFilter === 'recent') {
+          state.chartResults = state.results;
+        } else {
+          const chartPayload = await api('/api/run/results?limit=120');
+          state.chartResults = Array.isArray(chartPayload.results) ? chartPayload.results : [];
+        }
         state.lastResultsRefreshAt = Date.now();
         renderResults();
         renderRuntimeCharts();
         if (showToast) {
-          showMessage('请求结果已刷新。', 'success');
+          showMessage(state.resultFilter === 'failed' ? '失败请求结果已刷新。' : '请求结果已刷新。', 'success');
         }
       } catch (error) {
         if (showToast) {
@@ -1300,8 +1484,10 @@
 
     function renderStages(stages) {
       const normalized = normalizeStages(stages);
+      const focusState = captureStageFocus();
+      els.stageTableWrap.classList.toggle('scrollable', normalized.length > 5);
       els.stagesBody.innerHTML = normalized.map((stage, index) => {
-        const locked = isStageLocked(stage);
+        const locked = isStageLockedAt(normalized, index);
         return `
           <tr class="${locked ? 'stage-locked' : ''}">
             <td><input data-field="label" value="${escapeHtml(stage.label || '')}" placeholder="例如 预热" ${locked ? 'disabled' : ''} /></td>
@@ -1312,6 +1498,10 @@
           </tr>
         `;
       }).join('');
+      if (normalized.length > 5 && !focusState) {
+        els.stageTableWrap.scrollTop = els.stageTableWrap.scrollHeight;
+      }
+      restoreStageFocus(focusState);
     }
 
     function renderRequests(requests) {
@@ -1424,7 +1614,7 @@
         : '暂无状态码数据';
       els.lastError.textContent = metrics.last_error || '暂无错误';
       els.stageSummary.textContent = (status.stages || []).length
-        ? status.stages.map((stage, index) => `${index + 1}. ${stage.label || '阶段'} | duration=${stage.duration} | target=${stage.target}`).join('\n')
+        ? status.stages.map((stage, index) => `${index + 1}. ${stage.label || '阶段'} | 持续=${stage.duration} | target=${stage.target}`).join('\n')
         : '暂无阶段信息';
 
       updateStageEditingState();
@@ -1432,12 +1622,20 @@
 
     function renderResults() {
       const results = Array.isArray(state.results) ? state.results : [];
-      els.resultsCounter.textContent = results.length ? `最近 ${results.length} 条请求结果` : '暂无结果';
+      const failedMode = state.resultFilter === 'failed';
+      els.refreshResultsBtn.classList.toggle('active', !failedMode);
+      els.failedResultsBtn.classList.toggle('active', failedMode);
+      els.resultsCounter.textContent = results.length
+        ? (failedMode ? `本次 ${results.length} 条失败结果` : `最近 ${results.length} 条请求结果`)
+        : (failedMode ? '本次暂无失败' : '暂无结果');
       if (!results.length) {
-        els.resultsList.innerHTML = '<div class="empty-state">运行后，这里会展示每一次请求的完整请求信息、响应结果和错误详情。</div>';
+        els.resultsList.innerHTML = failedMode
+          ? '<div class="empty-state">本次压测暂未记录到失败请求。</div>'
+          : '<div class="empty-state">运行后，这里会展示每一次请求的完整请求信息、响应结果和错误详情。</div>';
         return;
       }
       els.resultsList.innerHTML = results.map((item) => {
+        const resultId = String(item.id || `${item.occurred_at || ''}-${item.worker_id || 0}-${item.step_index || 0}`);
         const badgeClass = item.success ? 'success' : 'error';
         const statusText = item.status_code ? `HTTP ${item.status_code}` : '无状态码';
         const queryText = formatBlockValue(item.query);
@@ -1448,8 +1646,9 @@
         const requestBody = item.request_body || '无';
         const responseBody = item.response_body || '无';
         const errorText = item.error || '无';
+        const open = state.openResultIds.has(resultId) || (!item.success && !state.closedResultIds.has(resultId));
         return `
-          <details class="result-item" ${item.success ? '' : 'open'}>
+          <details class="result-item" data-result-id="${escapeHtml(resultId)}" ${open ? 'open' : ''}>
             <summary>
               <div class="result-main">
                 <span class="result-badge ${badgeClass}">${item.success ? '成功' : '失败'}</span>
@@ -1514,8 +1713,41 @@
       }).join('');
     }
 
+    function captureStageFocus() {
+      const active = document.activeElement;
+      if (!active || !els.stagesBody.contains(active)) return null;
+      const row = active.closest('tr');
+      if (!row) return null;
+      return {
+        rowIndex: Array.from(els.stagesBody.children).indexOf(row),
+        field: active.dataset.field,
+        selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+        selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+      };
+    }
+
+    function restoreStageFocus(focusState) {
+      if (!focusState || focusState.rowIndex < 0 || !focusState.field) return;
+      const row = els.stagesBody.children[focusState.rowIndex];
+      const input = row?.querySelector(`[data-field="${focusState.field}"]`);
+      if (!input || input.disabled) return;
+      input.focus({ preventScroll: true });
+      if (focusState.selectionStart !== null && focusState.selectionEnd !== null) {
+        input.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
+      }
+    }
+
+    function focusLastEditableStage() {
+      const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
+      const row = rows.reverse().find(item => !item.classList.contains('stage-locked'));
+      const input = row?.querySelector('[data-field="label"]:not(:disabled), [data-field="duration"]:not(:disabled), [data-field="target"]:not(:disabled)');
+      if (input) {
+        input.focus({ preventScroll: true });
+      }
+    }
+
     function renderRuntimeCharts() {
-      const points = buildRuntimeSeries(state.results || []);
+      const points = buildRuntimeSeries(state.chartResults || state.results || []);
       renderLineChart(els.latencyChart, {
         series: [{ name: '平均耗时', color: '#7dd3fc', values: points.map(point => ({ x: point.x, y: point.avgLatency })) }],
         unit: 'ms',
@@ -1524,7 +1756,7 @@
       renderLineChart(els.tpsChart, {
         series: [
           { name: '成功 QPS', color: '#34d399', values: points.map(point => ({ x: point.x, y: point.success })) },
-          { name: '失败 QPS', color: '#fbbf24', values: points.map(point => ({ x: point.x, y: point.failure })) },
+          { name: '失败 QPS', color: '#f87171', values: points.map(point => ({ x: point.x, y: point.failure })) },
         ],
         unit: 'qps',
         emptyText: '暂无吞吐数据',
@@ -1558,10 +1790,17 @@
         buckets.set(second, bucket);
       }
 
-      return Array.from(buckets.values()).map(bucket => ({
-        ...bucket,
-        avgLatency: bucket.count ? bucket.totalLatency / bucket.count : 0,
-      }));
+      const lastSecond = Math.floor(items[items.length - 1].time / 1000);
+      const points = [];
+      for (let second = firstSecond; second <= lastSecond; second += 1) {
+        const bucket = buckets.get(second) || { x: second - firstSecond, totalLatency: 0, count: 0, success: 0, failure: 0 };
+        points.push({
+          ...bucket,
+          x: second - firstSecond,
+          avgLatency: bucket.count ? bucket.totalLatency / bucket.count : 0,
+        });
+      }
+      return points;
     }
 
     function renderLineChart(svgEl, options) {
@@ -1618,7 +1857,7 @@
       const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
       const stages = collectStagesFromTableSafe();
       rows.forEach((row, index) => {
-        const locked = isStageLocked(stages[index]);
+        const locked = isStageLockedAt(stages, index);
         row.classList.toggle('stage-locked', locked);
         row.querySelectorAll('input').forEach((input) => {
           input.disabled = locked;
@@ -1650,7 +1889,7 @@
       const cycleDuration = getCycleDuration(baseStages);
       const displayLoopCount = getChartLoopCount(loopLimit, cycleDuration, elapsedUnits);
       const chartStages = expandStagesForChart(baseStages, displayLoopCount);
-      const maxDuration = Math.max(chartStages.at(-1)?.duration || cycleDuration || 1, Math.ceil(elapsedUnits), 1);
+      const maxDuration = Math.max(chartStages.at(-1)?.end || cycleDuration || 1, Math.ceil(elapsedUnits), 1);
       const maxTarget = Math.max(...baseStages.map(item => Number(item.target || 0)), Number(state.status?.current_target || 0), 1);
       const width = 860;
       const height = 320;
@@ -1694,8 +1933,8 @@
       });
 
       chartStages.forEach((stage) => {
-        const locked = Boolean(state.status?.running) && Number(stage.duration || 0) <= elapsedUnits;
-        const x = xScale(stage.duration);
+        const locked = Boolean(state.status?.running) && Number(stage.end || 0) <= elapsedUnits;
+        const x = xScale(stage.end);
         const y = yScale(stage.target);
         svg.push(`<circle cx="${x}" cy="${y}" r="5.5" fill="${locked ? '#94a3b8' : '#60a5fa'}" stroke="#08111f" stroke-width="2"></circle>`);
       });
@@ -1735,7 +1974,7 @@
     }
 
     function getCycleDuration(stages) {
-      return Math.max(0, Number(stages.at(-1)?.duration || 0));
+      return normalizeStages(stages).reduce((total, stage) => total + Number(stage.duration || 0), 0);
     }
 
     function getChartLoopCount(loopLimit, cycleDuration, elapsedUnits) {
@@ -1753,14 +1992,16 @@
         return stages.map(stage => ({ ...stage }));
       }
       const expanded = [];
+      const timeline = buildStageTimeline(stages);
       for (let loopIndex = 0; loopIndex < Math.max(1, loopCount); loopIndex++) {
         const offset = loopIndex * cycleDuration;
-        stages.forEach((stage, index) => {
+        timeline.forEach((stage, index) => {
           expanded.push({
             ...stage,
             chartLoop: loopIndex + 1,
             chartIndex: index + 1,
-            duration: offset + Number(stage.duration || 0),
+            start: offset + Number(stage.start || 0),
+            end: offset + Number(stage.end || 0),
           });
         });
       }
@@ -1770,16 +2011,16 @@
     function buildStepSegments(stages, elapsedUnits) {
       const segments = [];
       if (!stages.length) return segments;
-      let startX = 0;
+      const timeline = stages[0] && Object.prototype.hasOwnProperty.call(stages[0], 'end') ? stages : buildStageTimeline(stages);
       for (let i = 0; i < stages.length; i++) {
-        const stage = stages[i];
-        const endX = Math.max(startX, Number(stage.duration || 0));
+        const stage = timeline[i];
+        const startX = Math.max(0, Number(stage.start || 0));
+        const endX = Math.max(startX, Number(stage.end || 0));
         addSegment(segments, startX, stage.target, endX, stage.target, elapsedUnits);
         if (i < stages.length - 1) {
-          const nextTarget = Number(stages[i + 1].target || 0);
+          const nextTarget = Number(timeline[i + 1].target || 0);
           addSegment(segments, endX, stage.target, endX, nextTarget, elapsedUnits);
         }
-        startX = endX;
       }
       return segments;
     }
@@ -1855,16 +2096,23 @@
 
     function normalizeStages(stages) {
       const source = Array.isArray(stages) && stages.length ? stages : [{ label: '默认阶段', duration: 30, target: 1 }];
-      let lastDuration = 0;
       return source.map((stage, index) => {
-        const duration = Math.max(lastDuration + 1, Number(stage?.duration || 0) || (index + 1) * 10);
+        const duration = Math.max(1, Number(stage?.duration || 0) || 10);
         const target = Math.max(0, Number(stage?.target || 0));
-        lastDuration = duration;
         return {
-          label: String(stage?.label || ''),
+          label: String(stage?.label || '').trim() || `阶段 ${index + 1}`,
           duration,
           target,
         };
+      });
+    }
+
+    function buildStageTimeline(stages) {
+      let elapsed = 0;
+      return normalizeStages(stages).map((stage) => {
+        const start = elapsed;
+        elapsed += Number(stage.duration || 0);
+        return { ...stage, start, end: elapsed };
       });
     }
 
@@ -1921,27 +2169,41 @@
       const cycleDuration = getCycleDuration(stages);
       if (cycleDuration <= 0) return 0;
       const elapsed = Math.max(0, getElapsedUnits());
+      if (!state.status?.running && Number(state.status?.loop_limit || 0) === 1 && elapsed >= cycleDuration) {
+        return cycleDuration;
+      }
       return elapsed % cycleDuration;
     }
 
     function getRuntimeCutoff(stages = getRuntimeStages()) {
-      if (!state.status?.running) return 0;
-      return Math.max(0, Math.floor(getElapsedUnitsInCycle(stages) + 1e-6));
+      if (!shouldLockHistoricalStages()) return 0;
+      return getCompletedStageCutoff(stages, getElapsedUnitsInCycle(stages));
+    }
+
+    function getCompletedStageCutoff(stages, elapsedUnits) {
+      let cutoff = 0;
+      for (const stage of buildStageTimeline(stages)) {
+        if (Number(stage.end || 0) <= elapsedUnits + 1e-6) {
+          cutoff = Number(stage.end || 0);
+          continue;
+        }
+        break;
+      }
+      return cutoff;
     }
 
     function takeStagesUntil(stages, cutoff) {
       const normalized = normalizeStages(stages);
       if (!normalized.length || cutoff <= 0) return [];
       const locked = [];
-      let previous = 0;
       for (const stage of normalized) {
         const duration = Number(stage.duration || 0);
-        if (duration <= cutoff) {
+        if (cutoff >= duration) {
           locked.push({ ...stage, duration });
-          previous = duration;
+          cutoff -= duration;
           continue;
         }
-        if (cutoff > previous) {
+        if (cutoff > 0) {
           locked.push({ ...stage, duration: cutoff });
         }
         break;
@@ -1951,9 +2213,28 @@
 
     function mergeStagesByCutoff(runtimeStages, draftStages, cutoff) {
       const locked = takeStagesUntil(runtimeStages, cutoff);
-      const future = normalizeStages(draftStages).filter(stage => Number(stage.duration || 0) > cutoff);
+      const future = takeStagesAfter(draftStages, cutoff);
       const merged = [...locked, ...future];
       return merged.length ? normalizeStages(merged) : normalizeStages(runtimeStages);
+    }
+
+    function takeStagesAfter(stages, cutoff) {
+      const future = [];
+      let remainingCutoff = Math.max(0, Number(cutoff || 0));
+      for (const stage of normalizeStages(stages)) {
+        const duration = Number(stage.duration || 0);
+        if (remainingCutoff >= duration) {
+          remainingCutoff -= duration;
+          continue;
+        }
+        if (remainingCutoff > 0) {
+          future.push({ ...stage, duration: duration - remainingCutoff });
+          remainingCutoff = 0;
+          continue;
+        }
+        future.push(stage);
+      }
+      return normalizeStages(future);
     }
 
     function sameStages(left, right) {
@@ -1966,14 +2247,22 @@
       });
     }
 
-    function isStageLocked(stage) {
-      if (!state.status?.running || !stage) return false;
-      return Number(stage.duration || 0) <= getRuntimeCutoff();
+    function isStageLockedAt(stages, index) {
+      if (!shouldLockHistoricalStages()) return false;
+      return getStageEnd(stages, index) <= getRuntimeCutoff();
+    }
+
+    function shouldLockHistoricalStages() {
+      return Boolean(state.status?.running);
+    }
+
+    function getStageEnd(stages, index) {
+      return normalizeStages(stages).slice(0, index + 1).reduce((total, stage) => total + Number(stage.duration || 0), 0);
     }
 
     function getLockedStageCount(stages = getWorkingStages()) {
       if (!state.status?.running) return 0;
-      return normalizeStages(stages).filter(stage => isStageLocked(stage)).length;
+      return normalizeStages(stages).filter((stage, index, allStages) => isStageLockedAt(allStages, index)).length;
     }
 
     function syncLockedStagesFromStatus() {
@@ -1984,6 +2273,10 @@
       const mergedStages = mergeStagesByCutoff(runtimeStages, localStages, getRuntimeCutoff(runtimeStages));
       const rows = Array.from(els.stagesBody.querySelectorAll('tr'));
       state.config.concurrency.stages = mergedStages;
+      if (els.stagesBody.contains(document.activeElement)) {
+        updateStageEditingState();
+        return;
+      }
       if (!rows.length || !sameStages(localStages, mergedStages)) {
         renderStages(mergedStages);
         return;
@@ -2024,13 +2317,9 @@
       return Number(stages[stages.length - 1].target || 1);
     }
 
-    function nextDuration(stages, anchor = null) {
-      if (Number.isFinite(anchor) && anchor >= 0) {
-        return Math.max(1, Math.floor(anchor) + 1);
-      }
+    function nextDuration(stages) {
       if (!Array.isArray(stages) || !stages.length) return 30;
-      const max = Math.max(...stages.map(item => Number(item.duration || 0)));
-      return max + Math.max(1, Math.round(max * 0.25), 10);
+      return Math.max(1, Number(stages[stages.length - 1].duration || 10));
     }
 
     function formatBlockValue(value) {

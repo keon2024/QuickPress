@@ -8,35 +8,14 @@ concurrency:
           duration: 10
           target: 2
         - label: 稳定
-          duration: 30
+          duration: 8
           target: 6
-        - label: 冲刺
-          duration: 59
+        - label: 稳定
+          duration: 10
           target: 12
-        - label: 冲刺
-          duration: 60
-          target: 12
-        - duration: 71
-          target: 20
-        - duration: 79
-          target: 12
-        - duration: 87
-          target: 8
-        - duration: 91
-          target: 6
-        - duration: 94
-          target: 4
-        - duration: 96
-          target: 20
-        - duration: 102
-          target: 20
-        - duration: 111
-          target: 1
-        - duration: 112
-          target: 0
 reader:
     type: csv
-    file: "请上传csv配置文件"
+    file: config/data/meituan_yace_data.csv
 global:
     host: https://postman-echo.com
     scene: quickpress
