@@ -29,6 +29,9 @@ go run . -config config/prod.yml -listen :18080
 # Run all tests
 go test ./...
 
+# Build a Linux x86_64 binary at dist/quickpress-linux-amd64
+make build-linux-amd64
+
 # Format Go files after Go edits
 gofmt -w <changed-go-files>
 ```
