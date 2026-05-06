@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,12 +45,81 @@ func (r *HttpResp) GetNode(path string) (*ast.Node, error) {
 
 	current := r.JsonObj
 	for _, part := range strings.Split(path, ".") {
-		current = current.Get(part)
-		if current == nil {
-			return nil, fmt.Errorf("path %s not found", path)
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
 		}
+		next, err := getJSONPathPart(current, part, path)
+		if err != nil {
+			return nil, err
+		}
+		current = next
 	}
 	return current, nil
+}
+
+func getJSONPathPart(current *ast.Node, part, fullPath string) (*ast.Node, error) {
+	for part != "" {
+		if strings.HasPrefix(part, "[") {
+			idx, rest, err := parseJSONPathIndex(part)
+			if err != nil {
+				return nil, fmt.Errorf("path %s invalid array index %q: %w", fullPath, part, err)
+			}
+			current = current.Index(idx)
+			if current == nil {
+				return nil, fmt.Errorf("path %s array index %d not found", fullPath, idx)
+			}
+			part = rest
+			continue
+		}
+
+		if current.TypeSafe() == ast.V_ARRAY {
+			idx, err := strconv.Atoi(part)
+			if err == nil {
+				current = current.Index(idx)
+				if current == nil {
+					return nil, fmt.Errorf("path %s array index %d not found", fullPath, idx)
+				}
+				return current, nil
+			}
+		}
+
+		bracket := strings.Index(part, "[")
+		key := part
+		rest := ""
+		if bracket >= 0 {
+			key = part[:bracket]
+			rest = part[bracket:]
+		}
+		if key == "" {
+			return nil, fmt.Errorf("path %s has empty object key", fullPath)
+		}
+		current = current.Get(key)
+		if current == nil {
+			return nil, fmt.Errorf("path %s key %s not found", fullPath, key)
+		}
+		part = rest
+	}
+	return current, nil
+}
+
+func parseJSONPathIndex(part string) (int, string, error) {
+	end := strings.Index(part, "]")
+	if end < 0 {
+		return 0, "", fmt.Errorf("missing closing bracket")
+	}
+	indexText := strings.TrimSpace(part[1:end])
+	if indexText == "" {
+		return 0, "", fmt.Errorf("empty index")
+	}
+	idx, err := strconv.Atoi(indexText)
+	if err != nil {
+		return 0, "", err
+	}
+	if idx < 0 {
+		return 0, "", fmt.Errorf("negative index")
+	}
+	return idx, part[end+1:], nil
 }
 
 func (r *HttpResp) GetString(path string) (string, error) {

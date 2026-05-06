@@ -93,19 +93,25 @@ func (s *Server) handleConfigGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleConfigSave(w http.ResponseWriter, r *http.Request) {
-	path := s.resolveConfigPath(r.URL.Query().Get("path"))
-	if strings.TrimSpace(path) == "" {
-		writeError(w, http.StatusBadRequest, "请提供配置文件路径")
-		return
-	}
-
 	var payload struct {
+		Path   string        `json:"path"`
 		Config config.Config `json:"config"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+
+	pathInput := r.URL.Query().Get("path")
+	if strings.TrimSpace(pathInput) == "" {
+		pathInput = payload.Path
+	}
+	path := s.resolveConfigPath(pathInput)
+	if strings.TrimSpace(path) == "" {
+		writeError(w, http.StatusBadRequest, "请提供配置文件路径")
+		return
+	}
+
 	payload.Config.Normalize()
 	if err := config.Save(path, payload.Config); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())

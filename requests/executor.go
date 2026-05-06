@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,6 +73,11 @@ func (e *Executor) Run(row map[string]string) Result {
 	lastStatus := 0
 	steps := make([]StepResult, 0, len(e.requests))
 	for _, req := range e.requests {
+		now := time.Now()
+		vars["timestamp"] = strconv.FormatInt(now.Unix(), 10)
+		vars["timestamp_ms"] = strconv.FormatInt(now.UnixMilli(), 10)
+
+		method := renderString(req.Method, vars)
 		body := renderMap(req.Body, vars)
 		bodyType := toBodyType(req.BodyType)
 		if len(body) > 0 && bodyType == utils.BodyNone {
@@ -81,11 +87,15 @@ func (e *Executor) Run(row map[string]string) Result {
 		if len(query) == 0 && len(req.Params) > 0 {
 			query = renderMap(req.Params, vars)
 		}
+		if shouldUseQueryAsForm(method, query, body, bodyType) {
+			body = query
+			bodyType = utils.BodyForm
+			query = map[string]interface{}{}
+		}
 		headers := renderStringMap(req.Headers, vars)
-		method := renderString(req.Method, vars)
 		requestURL := renderString(req.URL, vars)
 		step := StepResult{
-			StartedAt:       time.Now(),
+			StartedAt:       now,
 			RequestName:     req.Name,
 			Method:          method,
 			URL:             utils.BuildRequestURL(requestURL, query),
@@ -156,6 +166,18 @@ func renderString(input string, vars map[string]string) string {
 	if input == "" {
 		return ""
 	}
+	rendered := input
+	for i := 0; i < 5; i++ {
+		next := renderStringOnce(rendered, vars)
+		if next == rendered {
+			return next
+		}
+		rendered = next
+	}
+	return rendered
+}
+
+func renderStringOnce(input string, vars map[string]string) string {
 	return placeholderPattern.ReplaceAllStringFunc(input, func(match string) string {
 		groups := placeholderPattern.FindStringSubmatch(match)
 		key := ""
@@ -212,6 +234,16 @@ func renderValue(input interface{}, vars map[string]string) interface{} {
 	default:
 		return input
 	}
+}
+
+func shouldUseQueryAsForm(method string, query, body map[string]interface{}, bodyType utils.BodyType) bool {
+	if !strings.EqualFold(strings.TrimSpace(method), "POST") {
+		return false
+	}
+	if len(query) == 0 || len(body) > 0 {
+		return false
+	}
+	return bodyType == utils.BodyNone || bodyType == utils.BodyForm
 }
 
 func toBodyType(bodyType string) utils.BodyType {

@@ -104,3 +104,36 @@ func TestCompletedStageCutoffDurationSnapsToStageBoundary(t *testing.T) {
 		t.Fatalf("completedStageCutoffDuration() = %d, want 30", got)
 	}
 }
+
+func TestRequestLogBufferKeepsLatestFailuresOnly(t *testing.T) {
+	buffer := newRequestLogBuffer(10)
+	for i := 1; i <= failureLogCapacity+25; i++ {
+		buffer.Append([]RequestLog{{
+			RequestName: "failed",
+			StatusCode:  i,
+			Success:     false,
+			Error:       "failed",
+		}})
+	}
+
+	if got := len(buffer.failures); got != failureLogCapacity {
+		t.Fatalf("failure log length = %d, want %d", got, failureLogCapacity)
+	}
+	if got := buffer.failures[0].StatusCode; got != 26 {
+		t.Fatalf("oldest retained failure status = %d, want 26", got)
+	}
+	if got := buffer.failures[len(buffer.failures)-1].StatusCode; got != 125 {
+		t.Fatalf("latest retained failure status = %d, want 125", got)
+	}
+
+	results := buffer.Results(0, true)
+	if got := len(results); got != failureLogCapacity {
+		t.Fatalf("failure results length = %d, want %d", got, failureLogCapacity)
+	}
+	if got := results[0].StatusCode; got != 125 {
+		t.Fatalf("latest failure result status = %d, want 125", got)
+	}
+	if got := results[len(results)-1].StatusCode; got != 26 {
+		t.Fatalf("oldest failure result status = %d, want 26", got)
+	}
+}

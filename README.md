@@ -140,9 +140,11 @@ user_id,token
 ```yaml
 extractors:
   token: data.token
+  first_item_id: data.items[0].id
+  second_item_name: data.items.[1].name
 ```
 
-后续请求可以使用 `${token}`。
+提取路径支持对象点路径和数组下标，数组下标可写为 `items[0].id`、`items.[0].id`，当当前节点是数组时也支持 `items.0.id`。后续请求可以使用 `${token}`、`${first_item_id}`。
 
 ## 常用命令
 

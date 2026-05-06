@@ -167,7 +167,7 @@ Assertions:
 
 - `expected_status > 0` enforces an HTTP status code.
 - `contains` requires rendered text to be present in the response body.
-- `extractors` read JSON paths from a response and add variables for later requests.
+- `extractors` read JSON paths from a response and add variables for later requests. Paths support object dots and array indexes, e.g. `data.token`, `data.items[0].id`, `data.items.[0].id`, and `data.items.0.id` when the current node is an array.
 
 ## Validation Checklist
 

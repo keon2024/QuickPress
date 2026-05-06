@@ -710,19 +710,27 @@ func stageUnitDuration(unit string) time.Duration {
 	}
 }
 
+const failureLogCapacity = 100
+
 type requestLogBuffer struct {
-	mu       sync.Mutex
-	nextID   uint64
-	capacity int
-	entries  []RequestLog
-	failures []RequestLog
+	mu              sync.Mutex
+	nextID          uint64
+	capacity        int
+	failureCapacity int
+	entries         []RequestLog
+	failures        []RequestLog
 }
 
 func newRequestLogBuffer(capacity int) *requestLogBuffer {
 	if capacity <= 0 {
 		capacity = 200
 	}
-	return &requestLogBuffer{capacity: capacity, entries: make([]RequestLog, 0, capacity)}
+	return &requestLogBuffer{
+		capacity:        capacity,
+		failureCapacity: failureLogCapacity,
+		entries:         make([]RequestLog, 0, capacity),
+		failures:        make([]RequestLog, 0, failureLogCapacity),
+	}
 }
 
 func (b *requestLogBuffer) Append(items []RequestLog) {
@@ -735,7 +743,13 @@ func (b *requestLogBuffer) Append(items []RequestLog) {
 		b.nextID++
 		item.ID = b.nextID
 		if !item.Success {
-			b.failures = append(b.failures, cloneRequestLog(item))
+			failure := cloneRequestLog(item)
+			if len(b.failures) == b.failureCapacity {
+				copy(b.failures, b.failures[1:])
+				b.failures[len(b.failures)-1] = failure
+			} else {
+				b.failures = append(b.failures, failure)
+			}
 		}
 		if len(b.entries) == b.capacity {
 			copy(b.entries, b.entries[1:])

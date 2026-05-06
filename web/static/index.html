@@ -922,8 +922,10 @@
   </div>
 
   <script>
+    const initialConfigPath = new URLSearchParams(window.location.search).get('path') || '';
+
     const state = {
-      path: localStorage.getItem('quickpress-config-path') || 'config/prod.yml',
+      path: initialConfigPath,
       config: null,
       status: null,
       results: [],
@@ -1134,7 +1136,6 @@
 
     async function loadConfig() {
       try {
-        localStorage.setItem('quickpress-config-path', state.path);
         const query = state.path ? `?path=${encodeURIComponent(state.path)}` : '';
         const data = await api(`/api/config${query}`);
         state.path = data.path || state.path;
@@ -1163,12 +1164,12 @@
     async function saveConfig() {
       try {
         syncFormToState();
-        localStorage.setItem('quickpress-config-path', state.path);
         const query = state.path ? `?path=${encodeURIComponent(state.path)}` : '';
-        await api(`/api/config${query}`, {
+        const data = await api(`/api/config${query}`, {
           method: 'POST',
-          body: JSON.stringify({ config: state.config }),
+          body: JSON.stringify({ path: state.path, config: state.config }),
         });
+        state.path = data.path || state.path;
         showMessage(`配置已保存到 ${state.path || '默认路径'}`, 'success');
       } catch (error) {
         showMessage(error.message, 'error');
@@ -1282,7 +1283,7 @@
 
     async function refreshResults(showToast = false) {
       try {
-        const query = state.resultFilter === 'failed' ? '?failures=true&limit=0' : '?limit=120';
+        const query = state.resultFilter === 'failed' ? '?failures=true&limit=100' : '?limit=120';
         const payload = await api(`/api/run/results${query}`);
         state.results = Array.isArray(payload.results) ? payload.results : [];
         if (state.resultFilter === 'recent') {
@@ -1554,7 +1555,7 @@
                 <textarea class="json-area" data-name="headers" spellcheck="false">${escapeHtml(stringifyPretty(req.headers))}</textarea>
               </label>
               <label>
-                Query(JSON)
+                Query/Form(JSON)
                 <textarea class="json-area" data-name="query" spellcheck="false">${escapeHtml(stringifyPretty(req.query))}</textarea>
               </label>
             </div>
@@ -1672,7 +1673,7 @@
                   <div class="code-block">${escapeHtml(`${item.method || 'GET'} ${item.url || '-'}`)}</div>
                 </div>
                 <div>
-                  <span class="subtle">Query</span>
+                  <span class="subtle">Query/Form</span>
                   <div class="code-block">${escapeHtml(queryText)}</div>
                 </div>
                 <div>

@@ -29,7 +29,7 @@ func TestDoJSONAndQuery(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":200,"data":{"token":"abc-123"}}`))
+		_, _ = w.Write([]byte(`{"code":200,"data":{"token":"abc-123","items":[{"id":101,"name":"first"},{"id":102,"name":"second"}],"matrix":[["a","b"]]}}`))
 	}))
 	defer server.Close()
 
@@ -65,6 +65,23 @@ func TestDoJSONAndQuery(t *testing.T) {
 	}
 	if value != "abc-123" {
 		t.Fatalf("unexpected token: %s", value)
+	}
+
+	cases := map[string]string{
+		"data.items[0].id":    "101",
+		"data.items.[1].name": "second",
+		"data.items.0.name":   "first",
+		"data.matrix[0][1]":   "b",
+		"data.matrix.[0].[0]": "a",
+	}
+	for path, want := range cases {
+		got, err := resp.GetString(path)
+		if err != nil {
+			t.Fatalf("extract %s failed: %v", path, err)
+		}
+		if got != want {
+			t.Fatalf("extract %s = %s, want %s", path, got, want)
+		}
 	}
 }
 
